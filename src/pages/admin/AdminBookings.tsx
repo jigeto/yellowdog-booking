@@ -45,6 +45,7 @@ export function AdminBookings() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -78,9 +79,29 @@ export function AdminBookings() {
 
   const handleAction = async (booking: Booking, action: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => {
     setActionLoading(true);
-    await supabase.from('bookings').update({ status: action }).eq('id', booking.id);
+    setActionError(null);
+    const { error, data } = await supabase.from('bookings').update({ status: action }).eq('id', booking.id).select();
+    if (error) {
+      console.error('[handleAction] update bookings failed:', error);
+      setActionError(`Грешка: ${error.message}`);
+      setActionLoading(false);
+      return;
+    }
+    if (!data || data.length === 0) {
+      console.error('[handleAction] update matched 0 rows (likely blocked by RLS) for booking', booking.id);
+      setActionError('Промяната не мина — заявката не засегна нито един ред (вероятно RLS блокира директен update от admin панела).');
+      setActionLoading(false);
+      return;
+    }
     if (action === 'cancelled' && booking.slot_id) {
-      await supabase.from('time_slots').update({ status: 'available' }).eq('id', booking.slot_id);
+      const { error: slotErr } = await supabase.from('time_slots').update({ status: 'available' }).eq('id', booking.slot_id);
+      if (slotErr) {
+        console.error('[handleAction] update time_slots failed:', slotErr);
+        setActionError(`Резервацията е отказана, но часът не се освободи: ${slotErr.message}`);
+        setActionLoading(false);
+        load();
+        return;
+      }
     }
     setActionLoading(false);
     setSelectedBooking(null);
@@ -89,6 +110,7 @@ export function AdminBookings() {
 
   const handleRefund = async (booking: Booking) => {
     setActionLoading(true);
+    setActionError(null);
     try {
       const apiUrl = `${supabaseUrl}/functions/v1/refund`;
       await fetch(apiUrl, {
@@ -102,7 +124,19 @@ export function AdminBookings() {
     } catch {
       // Edge function may not be deployed yet
     }
-    await supabase.from('bookings').update({ payment_status: 'refunded' }).eq('id', booking.id);
+    const { error, data } = await supabase.from('bookings').update({ payment_status: 'refunded' }).eq('id', booking.id).select();
+    if (error) {
+      console.error('[handleRefund] update bookings failed:', error);
+      setActionError(`Грешка: ${error.message}`);
+      setActionLoading(false);
+      return;
+    }
+    if (!data || data.length === 0) {
+      console.error('[handleRefund] update matched 0 rows (likely blocked by RLS) for booking', booking.id);
+      setActionError('Възстановяването не мина — заявката не засегна нито един ред (вероятно RLS).');
+      setActionLoading(false);
+      return;
+    }
     setActionLoading(false);
     setSelectedBooking(null);
     load();
@@ -168,7 +202,7 @@ export function AdminBookings() {
             </thead>
             <tbody>
               {filtered.map((b) => (
-                <tr key={b.id} className="border-b border-ink-50 hover:bg-cream-50 transition-colors cursor-pointer" onClick={() => setSelectedBooking(b)}>
+                <tr key={b.id} className="border-b border-ink-50 hover:bg-cream-50 transition-colors cursor-pointer" onClick={() => { setSelectedBooking(b); setActionError(null); }}>
                   <td className="px-4 py-3 font-mono text-sm text-ink-800">{b.reference}</td>
                   <td className="px-4 py-3 text-sm text-ink-600">
                     {b.starts_at ? format(parseISO(b.starts_at), 'd MMM, HH:mm', { locale: bg }) : '—'}
@@ -196,10 +230,11 @@ export function AdminBookings() {
       {selectedBooking && (
         <BookingDetailModal
           booking={selectedBooking}
-          onClose={() => setSelectedBooking(null)}
+          onClose={() => { setSelectedBooking(null); setActionError(null); }}
           onAction={handleAction}
           onRefund={handleRefund}
           actionLoading={actionLoading}
+          actionError={actionError}
         />
       )}
     </div>
@@ -212,12 +247,14 @@ function BookingDetailModal({
   onAction,
   onRefund,
   actionLoading,
+  actionError,
 }: {
   booking: Booking;
   onClose: () => void;
   onAction: (b: Booking, a: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => void;
   onRefund: (b: Booking) => void;
   actionLoading: boolean;
+  actionError: string | null;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
@@ -282,6 +319,9 @@ function BookingDetailModal({
 
           {/* Actions */}
           <div className="pt-4 border-t border-ink-100 space-y-2">
+            {actionError && (
+              <p className="text-sm text-error-600 bg-error-50 rounded-lg px-3 py-2">{actionError}</p>
+            )}
             {booking.status === 'pending' && (
               <button onClick={() => onAction(booking, 'confirmed')} disabled={actionLoading} className="btn-primary w-full text-sm">
                 <CheckCircle className="w-4 h-4" /> Потвърди резервацията
