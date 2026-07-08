@@ -5,7 +5,7 @@
 const BRAND_YELLOW = "#F5B400";
 const BRAND_INK = "#1A1A17";
 const LOGO_URL = "https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png";
-const STUDIO_ADDRESS = "бул. „Владимир Вазов" 90, София";
+const STUDIO_ADDRESS = "бул. „Владимир Вазов“ 90, София";
 const STUDIO_PHONE = "+359 876 822 686";
 const STUDIO_EMAIL = "office@yellowdog.bg";
 
