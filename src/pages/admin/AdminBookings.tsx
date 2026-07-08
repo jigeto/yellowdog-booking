@@ -1,12 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type Booking, type TimeSlot } from '../../lib/supabase';
+import { supabase, type Booking } from '../../lib/supabase';
 import { classNames, formatEUR, formatDateTime } from '../../lib/utils';
 import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { format } from 'date-fns';
-
-type BookingWithSlot = Booking & { slot?: TimeSlot };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакащ',
@@ -17,12 +15,11 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
-  unpaid: 'Неплатено',
-  deposit_paid: 'Капаро',
-  full_paid: 'Платено',
-  voucher_paid: 'Ваучер',
+  deposit_pending: 'Чака плащане',
+  deposit_paid: 'Капаро платено',
+  paid_full: 'Платено изцяло',
   refunded: 'Възстановено',
-  partially_refunded: 'Частично възстановено',
+  deposit_waived: 'Без капаро',
 };
 
 const PAYMENT_MODE_LABELS: Record<string, string> = {
@@ -42,37 +39,22 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function AdminBookings() {
-  const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedBooking, setSelectedBooking] = useState<BookingWithSlot | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('bookings')
+      .from('booking_admin_view')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      const slotIds = [...new Set((data as Booking[]).map((b) => b.slot_id).filter(Boolean))] as string[];
-      let slotMap: Record<string, TimeSlot> = {};
-      if (slotIds.length > 0) {
-        const { data: slotsData } = await supabase
-          .from('time_slots')
-          .select('*')
-          .in('id', slotIds);
-        if (slotsData) {
-          (slotsData as TimeSlot[]).forEach((s) => { slotMap[s.id] = s; });
-        }
-      }
-      const mapped = (data as Booking[]).map((b) => ({
-        ...b,
-        slot: b.slot_id ? slotMap[b.slot_id] : undefined,
-      })) as BookingWithSlot[];
-      setBookings(mapped);
+      setBookings(data as Booking[]);
     }
     setLoading(false);
   };
@@ -87,7 +69,7 @@ export function AdminBookings() {
         return (
           b.reference.toLowerCase().includes(s) ||
           b.pet_name?.toLowerCase().includes(s) ||
-          b.customer_id?.toLowerCase().includes(s)
+          b.customer_name?.toLowerCase().includes(s)
         );
       }
       return true;
@@ -96,7 +78,7 @@ export function AdminBookings() {
 
   const handleAction = async (booking: Booking, action: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => {
     setActionLoading(true);
-    await supabase.from('bookings').update({ status: action, updated_at: new Date().toISOString() }).eq('id', booking.id);
+    await supabase.from('bookings').update({ status: action }).eq('id', booking.id);
     if (action === 'cancelled' && booking.slot_id) {
       await supabase.from('time_slots').update({ status: 'available' }).eq('id', booking.slot_id);
     }
@@ -120,7 +102,7 @@ export function AdminBookings() {
     } catch {
       // Edge function may not be deployed yet
     }
-    await supabase.from('bookings').update({ payment_status: 'refunded', updated_at: new Date().toISOString() }).eq('id', booking.id);
+    await supabase.from('bookings').update({ payment_status: 'refunded' }).eq('id', booking.id);
     setActionLoading(false);
     setSelectedBooking(null);
     load();
@@ -189,7 +171,7 @@ export function AdminBookings() {
                 <tr key={b.id} className="border-b border-ink-50 hover:bg-cream-50 transition-colors cursor-pointer" onClick={() => setSelectedBooking(b)}>
                   <td className="px-4 py-3 font-mono text-sm text-ink-800">{b.reference}</td>
                   <td className="px-4 py-3 text-sm text-ink-600">
-                    {b.slot ? format(parseISO(b.slot.starts_at), 'd MMM, HH:mm', { locale: bg }) : '—'}
+                    {b.starts_at ? format(parseISO(b.starts_at), 'd MMM, HH:mm', { locale: bg }) : '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-ink-600">{b.pet_name}</td>
                   <td className="px-4 py-3 text-sm text-ink-600 capitalize">{b.package_slug}</td>
@@ -231,7 +213,7 @@ function BookingDetailModal({
   onRefund,
   actionLoading,
 }: {
-  booking: BookingWithSlot;
+  booking: Booking;
   onClose: () => void;
   onAction: (b: Booking, a: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => void;
   onRefund: (b: Booking) => void;
@@ -250,7 +232,7 @@ function BookingDetailModal({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-ink-400 text-xs uppercase mb-1">Дата/час</p>
-              <p className="text-ink-800">{booking.slot ? formatDateTime(booking.slot.starts_at) : '—'}</p>
+              <p className="text-ink-800">{booking.starts_at ? formatDateTime(booking.starts_at) : '—'}</p>
             </div>
             <div>
               <p className="text-ink-400 text-xs uppercase mb-1">Пакет</p>
@@ -320,7 +302,7 @@ function BookingDetailModal({
                 <Ban className="w-4 h-4" /> Откажи
               </button>
             )}
-            {(booking.payment_status === 'deposit_paid' || booking.payment_status === 'full_paid') && (
+            {(booking.payment_status === 'deposit_paid' || booking.payment_status === 'paid_full') && (
               <button onClick={() => onRefund(booking)} disabled={actionLoading} className="btn-secondary w-full text-sm">
                 <RotateCcw className="w-4 h-4" /> Възстанови плащане
               </button>

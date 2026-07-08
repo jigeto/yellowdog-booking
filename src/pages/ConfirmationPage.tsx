@@ -70,7 +70,7 @@ export function ConfirmationPage() {
     );
   }
 
-  const isPaid = booking.payment_status !== 'unpaid' || booking.amount_paid_eur >= booking.total_eur;
+  const isPaid = booking.payment_status !== 'deposit_pending';
   const slotDate = booking.starts_at ? parseISO(booking.starts_at) : null;
   const amountRemaining = Math.max(0, booking.total_eur - booking.amount_paid_eur);
 

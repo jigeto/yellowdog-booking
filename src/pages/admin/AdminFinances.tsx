@@ -1,12 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type Booking, type TimeSlot } from '../../lib/supabase';
+import { supabase, type Booking } from '../../lib/supabase';
 import { formatEUR, formatDate } from '../../lib/utils';
 import { Loader2, Download, TrendingUp, Camera, CreditCard, BarChart2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { format, parseISO, subMonths, isSameMonth } from 'date-fns';
 import { bg } from 'date-fns/locale';
-
-type BookingWithSlot = Booking & { slot?: TimeSlot };
 
 const PACKAGE_COLORS: Record<string, string> = {
   classic: '#F5B400',
@@ -15,32 +13,19 @@ const PACKAGE_COLORS: Record<string, string> = {
 };
 
 export function AdminFinances() {
-  const [bookings, setBookings] = useState<BookingWithSlot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       const { data } = await supabase
-        .from('bookings')
+        .from('booking_admin_view')
         .select('*')
         .neq('status', 'cancelled')
         .order('created_at', { ascending: false });
 
-      const rows = (data || []) as Booking[];
-      const slotIds = [...new Set(rows.map((b) => b.slot_id).filter(Boolean))] as string[];
-      let slotMap: Record<string, TimeSlot> = {};
-      if (slotIds.length > 0) {
-        const { data: slotsData } = await supabase.from('time_slots').select('*').in('id', slotIds);
-        if (slotsData) {
-          (slotsData as TimeSlot[]).forEach((s) => { slotMap[s.id] = s; });
-        }
-      }
-      const mapped = rows.map((b) => ({
-        ...b,
-        slot: b.slot_id ? slotMap[b.slot_id] : undefined,
-      })) as BookingWithSlot[];
-      setBookings(mapped);
+      setBookings((data || []) as Booking[]);
       setLoading(false);
     })();
   }, []);
@@ -83,13 +68,14 @@ export function AdminFinances() {
   }, [bookings]);
 
   const paymentModeData = useMemo(() => {
-    const counts: Record<string, number> = { deposit: 0, full: 0, voucher: 0, remainder: 0 };
+    const counts: Record<string, number> = { deposit: 0, full: 0, voucher: 0, voucher_upgrade: 0, deposit_waived: 0 };
     bookings.forEach(b => { if (b.payment_mode) counts[b.payment_mode] = (counts[b.payment_mode] || 0) + 1; });
     return [
       { name: 'Капаро', value: counts.deposit, color: '#F5B400' },
       { name: 'Пълно', value: counts.full, color: '#E0A300' },
       { name: 'Ваучер', value: counts.voucher, color: '#C08D00' },
-      { name: 'Остатък', value: counts.remainder, color: '#9A6F00' },
+      { name: 'Ваучер + доплащане', value: counts.voucher_upgrade, color: '#9A6F00' },
+      { name: 'Без капаро', value: counts.deposit_waived, color: '#7A5900' },
     ].filter(d => d.value > 0);
   }, [bookings]);
 
@@ -97,7 +83,7 @@ export function AdminFinances() {
     const headers = ['Референция', 'Дата', 'Пакет', 'Статус', 'Плащане', 'Дължимо', 'Платено', 'Любимец'];
     const rows = bookings.map(b => [
       b.reference,
-      b.slot ? format(parseISO(b.slot.starts_at), 'd.MM.yyyy HH:mm') : formatDate(b.created_at, 'd.MM.yyyy'),
+      b.starts_at ? format(parseISO(b.starts_at), 'd.MM.yyyy HH:mm') : formatDate(b.created_at, 'd.MM.yyyy'),
       b.package_slug,
       b.status,
       b.payment_status,

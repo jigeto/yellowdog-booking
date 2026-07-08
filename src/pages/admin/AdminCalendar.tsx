@@ -34,7 +34,7 @@ export function AdminCalendar() {
 
     const [slotsRes, bookingsRes] = await Promise.all([
       supabase.from('time_slots').select('*').gte('starts_at', startDate.toISOString()).lte('starts_at', endDate.toISOString()).order('starts_at'),
-      supabase.from('bookings').select('*').gte('created_at', subMonths(startDate, 1).toISOString()),
+      supabase.from('booking_admin_view').select('*').gte('created_at', subMonths(startDate, 1).toISOString()),
     ]);
 
     setSlots(slotsRes.data as TimeSlot[] || []);
@@ -262,7 +262,7 @@ function WeekView({ slotsByDate, bookingBySlotId, currentDate, statusColor, onSl
                   >
                     <div className="font-medium">{formatTime(slot.starts_at)}</div>
                     {slot.status === 'blocked' ? (
-                      <div className="text-[10px] opacity-70">{slot.block_reason || 'Блокиран'}</div>
+                      <div className="text-[10px] opacity-70">{slot.blocked_reason || 'Блокиран'}</div>
                     ) : bookingBySlotId[slot.id] ? (
                       <div className="text-[10px] opacity-70 truncate">{bookingBySlotId[slot.id].pet_name}</div>
                     ) : (
@@ -310,7 +310,7 @@ function DayView({ slots, bookingBySlotId, statusColor, onSlotClick }: {
               </div>
               <div className="flex-1">
                 {slot.status === 'blocked' ? (
-                  <span className="text-sm">{slot.block_reason || 'Блокиран'}</span>
+                  <span className="text-sm">{slot.blocked_reason || 'Блокиран'}</span>
                 ) : bookingBySlotId[slot.id] ? (
                   <span className="text-sm">{bookingBySlotId[slot.id].pet_name} · {bookingBySlotId[slot.id].reference}</span>
                 ) : (
@@ -630,9 +630,10 @@ function ManualBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
         <div>
           <label className="label">Статус на плащане</label>
           <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="input-field">
-            <option value="unpaid">Неплатено</option>
+            <option value="deposit_pending">Чака плащане</option>
             <option value="deposit_paid">Капаро платено</option>
-            <option value="full_paid">Пълно плащане</option>
+            <option value="paid_full">Платено изцяло</option>
+            <option value="deposit_waived">Без капаро (доверен клиент)</option>
           </select>
         </div>
         <div><label className="label">Бележка</label><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className="input-field resize-none" /></div>
@@ -732,8 +733,8 @@ function SlotDetailModal({ slot, booking, onClose, onUpdated }: { slot: TimeSlot
           </div>
           <p className="text-sm text-ink-500">{formatTime(slot.starts_at)} – {formatTime(slot.ends_at)}</p>
           <p className="text-sm text-ink-500 mt-1">Статус: <span className="font-medium">{slot.status === 'available' ? 'Свободен' : slot.status === 'blocked' ? 'Блокиран' : 'Резервиран'}</span></p>
-          {slot.status === 'blocked' && slot.block_reason && (
-            <p className="text-sm text-ink-500 mt-1">Причина: {slot.block_reason}</p>
+          {slot.status === 'blocked' && slot.blocked_reason && (
+            <p className="text-sm text-ink-500 mt-1">Причина: {slot.blocked_reason}</p>
           )}
         </div>
 

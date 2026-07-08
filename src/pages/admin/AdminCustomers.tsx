@@ -101,14 +101,14 @@ export function AdminCustomers() {
 function CustomerDetailModal({ customer, onClose, onUpdated }: { customer: CustomerWithStats; onClose: () => void; onUpdated: () => void }) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [pets, setPets] = useState<Pet[]>([]);
-  const [adminNotes, setAdminNotes] = useState(customer.admin_notes || '');
+  const [adminNotes, setAdminNotes] = useState(customer.admin_note || '');
   const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const [bRes, pRes] = await Promise.all([
-        supabase.from('bookings').select('*').eq('customer_id', customer.id).order('created_at', { ascending: false }),
+        supabase.from('booking_admin_view').select('*').eq('customer_id', customer.id).order('created_at', { ascending: false }),
         supabase.from('pets').select('*').eq('customer_id', customer.id),
       ]);
       setBookings(bRes.data as Booking[] || []);
@@ -119,7 +119,7 @@ function CustomerDetailModal({ customer, onClose, onUpdated }: { customer: Custo
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
-    await supabase.from('customers').update({ admin_notes: adminNotes }).eq('id', customer.id);
+    await supabase.from('customers').update({ admin_note: adminNotes }).eq('id', customer.id);
     setSavingNotes(false);
     onUpdated();
   };

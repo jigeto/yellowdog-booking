@@ -105,7 +105,7 @@ export function AdminSlots() {
                       <div className="text-xs text-ink-500">
                         {slot.status === 'available' && 'Свободен'}
                         {slot.status === 'booked' && 'Резервиран'}
-                        {slot.status === 'blocked' && (slot.block_reason || 'Блокиран')}
+                        {slot.status === 'blocked' && (slot.blocked_reason || 'Блокиран')}
                       </div>
                     </div>
                   ))}

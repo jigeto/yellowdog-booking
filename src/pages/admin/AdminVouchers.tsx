@@ -40,7 +40,7 @@ export function AdminVouchers() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('vouchers').select('*').order('created_at', { ascending: false });
+    const { data } = await supabase.from('voucher_admin_view').select('*').order('created_at', { ascending: false });
     setVouchers((data as Voucher[]) || []);
     setLoading(false);
   };
@@ -211,7 +211,7 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
       p_recipient_email: recipientEmail || null,
       p_purchaser_name: purchaserName,
       p_message: message || null,
-    }).single();
+    });
 
     if (rpcError) {
       setError(rpcError.message);
@@ -219,7 +219,9 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
       return;
     }
 
-    const code = (data as { code?: string })?.code;
+    // admin_issue_voucher returns a plain text value (the generated code),
+    // not a row/object — read it directly.
+    const code = data as string | null;
     if (code) {
       setIssuedCode(code);
     } else {

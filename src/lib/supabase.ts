@@ -27,34 +27,45 @@ export type TimeSlot = {
   id: string;
   starts_at: string;
   ends_at: string;
-  status: 'available' | 'blocked' | 'booked';
-  block_reason: string | null;
+  status: 'available' | 'held' | 'booked' | 'blocked';
+  blocked_reason: string | null;
 };
 
+// Shape returned by `booking_admin_view` — a joined, flat read model used by
+// all admin pages. Not a real table; writes still go through the base
+// `bookings` table or the RPC functions.
 export type Booking = {
   id: string;
   reference: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  payment_status: 'deposit_pending' | 'deposit_paid' | 'paid_full' | 'refunded' | 'deposit_waived';
+  payment_mode: 'deposit' | 'full' | 'voucher' | 'voucher_upgrade' | 'deposit_waived' | null;
+  total_eur: number;
+  deposit_eur: number;
+  amount_paid_eur: number;
+  amount_due_eur: number;
+  num_pets: number;
+  note: string | null;
+  admin_note: string | null;
+  created_at: string;
+  package_id: string | null;
+  package_slug: string | null;
+  package_name_bg: string | null;
+  package_price_eur: number | null;
   slot_id: string | null;
-  package_slug: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  slot_status: string | null;
   customer_id: string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  pet_id: string | null;
   pet_name: string | null;
   pet_species: 'dog' | 'cat' | 'other' | null;
   pet_breed: string | null;
-  num_pets: number;
-  note: string | null;
-  marketing_consent: boolean;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
-  payment_status: 'unpaid' | 'deposit_paid' | 'full_paid' | 'voucher_paid' | 'refunded' | 'partially_refunded';
-  payment_mode: 'deposit' | 'full' | 'voucher' | 'voucher_upgrade' | 'deposit_waived' | null;
-  amount_due_eur: number;
-  amount_paid_eur: number;
-  voucher_code: string | null;
   voucher_id: string | null;
-  stripe_session_id: string | null;
-  stripe_session_url: string | null;
-  hold_expires_at: string | null;
-  created_at: string;
-  updated_at: string;
+  voucher_code: string | null;
 };
 
 export type Customer = {
@@ -63,8 +74,7 @@ export type Customer = {
   email: string;
   phone: string | null;
   marketing_consent: boolean;
-  gdpr_consent: boolean;
-  admin_notes: string | null;
+  admin_note: string | null;
   created_at: string;
 };
 
@@ -77,24 +87,25 @@ export type Pet = {
   created_at: string;
 };
 
+// Shape returned by `voucher_admin_view`.
 export type Voucher = {
   id: string;
   code: string;
   kind: 'gift_package' | 'deposit_waiver';
+  package_id: string | null;
   package_slug: string | null;
   package_name_bg: string | null;
   package_price_eur: number | null;
-  purchaser_name: string;
-  purchaser_email: string;
+  amount_eur: number;
+  source: 'purchase' | 'manual_admin';
+  purchaser_name: string | null;
+  purchaser_email: string | null;
   recipient_name: string | null;
   recipient_email: string | null;
   message: string | null;
-  status: 'active' | 'redeemed' | 'expired';
-  source: 'purchase' | 'manual_admin';
-  stripe_session_id: string | null;
-  stripe_payment_id: string | null;
+  status: 'active' | 'redeemed' | 'expired' | 'cancelled';
   expires_at: string;
-  redeemed_at: string | null;
+  redeemed_booking_id: string | null;
   created_at: string;
 };
 
