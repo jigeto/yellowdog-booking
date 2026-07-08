@@ -205,7 +205,7 @@ export function VoucherPage() {
             <label className="flex items-start gap-3 cursor-pointer">
               <input type="checkbox" checked={gdprConsent} onChange={(e) => setGdprConsent(e.target.checked)} className="mt-1 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400" />
               <span className="text-sm text-ink-600">
-                Съгласен съм с <a href="#" className="text-yellow-600 underline">общите условия</a> и <a href="#" className="text-yellow-600 underline">политиката за поверителност</a> (GDPR). *
+                Съгласен съм с <a href="https://yellowdog.bg/uslovia" target="_blank" rel="noopener noreferrer" className="text-yellow-600 underline">общите условия</a> и <a href="https://yellowdog.bg/poveritelnost" target="_blank" rel="noopener noreferrer" className="text-yellow-600 underline">политиката за поверителност</a> (GDPR). *
               </span>
             </label>
           </div>

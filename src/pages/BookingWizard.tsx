@@ -665,7 +665,7 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
             className="mt-1 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
           />
           <span className="text-sm text-ink-600">
-            Съгласен съм с <a href="#" className="text-yellow-600 underline">общите условия</a> и <a href="#" className="text-yellow-600 underline">политиката за поверителност</a> на студиото (GDPR). *
+            Съгласен съм с <a href="https://yellowdog.bg/uslovia" target="_blank" rel="noopener noreferrer" className="text-yellow-600 underline">общите условия</a> и <a href="https://yellowdog.bg/poveritelnost" target="_blank" rel="noopener noreferrer" className="text-yellow-600 underline">политиката за поверителност</a> на студиото (GDPR). *
           </span>
         </label>
         <label className="flex items-start gap-3 cursor-pointer">
