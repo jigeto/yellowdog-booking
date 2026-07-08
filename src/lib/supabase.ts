@@ -66,6 +66,7 @@ export type Booking = {
   pet_breed: string | null;
   voucher_id: string | null;
   voucher_code: string | null;
+  reminder_sent?: boolean;
 };
 
 export type Customer = {

@@ -1,0 +1,148 @@
+// Shared HTML email templates. Kept deliberately simple (table-based,
+// inline styles) since most email clients strip <style> blocks and modern
+// CSS layout.
+
+const BRAND_YELLOW = "#F5B400";
+const BRAND_INK = "#1A1A17";
+const LOGO_URL = "https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png";
+const STUDIO_ADDRESS = "бул. „Владимир Вазов" 90, София";
+const STUDIO_PHONE = "+359 876 822 686";
+const STUDIO_EMAIL = "office@yellowdog.bg";
+
+const BG_MONTHS = [
+  "януари", "февруари", "март", "април", "май", "юни",
+  "юли", "август", "септември", "октомври", "ноември", "декември",
+];
+
+function formatDateBg(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${BG_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function formatTimeBg(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
+}
+
+function eur(n: number | null | undefined): string {
+  return `${(n ?? 0).toFixed(2)} €`;
+}
+
+function wrapper(bodyHtml: string): string {
+  return `
+<div style="font-family: Georgia, 'Times New Roman', serif; background:#FAF7F0; padding:32px 16px;">
+  <div style="max-width:560px; margin:0 auto; background:#ffffff; border-radius:16px; overflow:hidden; border:1px solid #EFE9DC;">
+    <div style="background:${BRAND_INK}; padding:20px 28px;">
+      <img src="${LOGO_URL}" alt="Студио Жълто куче" height="36" style="display:block;" />
+    </div>
+    <div style="padding:28px;">
+      ${bodyHtml}
+    </div>
+    <div style="background:#FAF7F0; padding:18px 28px; font-size:12px; color:#8a8a80; font-family: Arial, sans-serif;">
+      Студио Жълто куче · ${STUDIO_ADDRESS}<br/>
+      ${STUDIO_PHONE} · ${STUDIO_EMAIL}
+    </div>
+  </div>
+</div>`.trim();
+}
+
+type BookingRow = {
+  reference: string;
+  package_name_bg: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  customer_name: string | null;
+  pet_name: string | null;
+  num_pets: number;
+  total_eur: number;
+  amount_paid_eur: number;
+  amount_due_eur: number;
+  payment_mode: string | null;
+};
+
+export function bookingConfirmationEmail(b: BookingRow): { subject: string; html: string } {
+  const dateStr = b.starts_at ? `${formatDateBg(b.starts_at)}, ${formatTimeBg(b.starts_at)}ч.` : "—";
+  const paidLine =
+    b.amount_due_eur > 0
+      ? `<p style="margin:4px 0; color:#555;">Платено: <strong>${eur(b.amount_paid_eur)}</strong> · Остатък за плащане на място: <strong>${eur(b.amount_due_eur)}</strong></p>`
+      : `<p style="margin:4px 0; color:#555;">Платено изцяло: <strong>${eur(b.amount_paid_eur)}</strong></p>`;
+
+  const html = wrapper(`
+    <h1 style="font-size:22px; color:${BRAND_INK}; margin:0 0 4px;">Резервацията е потвърдена!</h1>
+    <p style="color:#555; margin:0 0 20px;">Здравейте, ${b.customer_name || ""} — очакваме ви с нетърпение.</p>
+
+    <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Референция</td><td style="padding:6px 0; text-align:right; font-family:monospace; font-weight:bold;">${b.reference}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Пакет</td><td style="padding:6px 0; text-align:right;">${b.package_name_bg || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Дата и час</td><td style="padding:6px 0; text-align:right;">${dateStr}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Любимец</td><td style="padding:6px 0; text-align:right;">${b.pet_name || "—"} (${b.num_pets} бр.)</td></tr>
+    </table>
+
+    <div style="background:#FFF8E5; border-radius:10px; padding:14px 16px; margin-bottom:20px;">
+      ${paidLine}
+    </div>
+
+    <p style="color:#555; line-height:1.6;">Адрес на студиото: <strong>${STUDIO_ADDRESS}</strong>.<br/>
+    Ще ви пратим и напомняне ден преди фотосесията. Ако имате въпроси или искате да промените часа, пишете ни на ${STUDIO_EMAIL} или се обадете на ${STUDIO_PHONE}.</p>
+  `);
+
+  return { subject: `Потвърждение на резервация ${b.reference} — Студио Жълто куче`, html };
+}
+
+export function bookingReminderEmail(b: BookingRow): { subject: string; html: string } {
+  const dateStr = b.starts_at ? `утре, ${formatDateBg(b.starts_at)} от ${formatTimeBg(b.starts_at)}ч.` : "утре";
+  const dueLine =
+    b.amount_due_eur > 0
+      ? `<p style="margin:4px 0; color:#555;">На място ще трябва да доплатите: <strong>${eur(b.amount_due_eur)}</strong></p>`
+      : "";
+
+  const html = wrapper(`
+    <h1 style="font-size:22px; color:${BRAND_INK}; margin:0 0 4px;">Напомняне за утрешната фотосесия 🐾</h1>
+    <p style="color:#555; margin:0 0 20px;">Здравейте, ${b.customer_name || ""} — очакваме ${b.pet_name || "любимеца ви"} ${dateStr}</p>
+
+    <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Референция</td><td style="padding:6px 0; text-align:right; font-family:monospace; font-weight:bold;">${b.reference}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Пакет</td><td style="padding:6px 0; text-align:right;">${b.package_name_bg || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Адрес</td><td style="padding:6px 0; text-align:right;">${STUDIO_ADDRESS}</td></tr>
+    </table>
+
+    ${dueLine ? `<div style="background:#FFF8E5; border-radius:10px; padding:14px 16px; margin-bottom:20px;">${dueLine}</div>` : ""}
+
+    <p style="color:#555; line-height:1.6;">Няколко съвета: елате няколко минути по-рано, вземете любима играчка/лакомство на ${b.pet_name || "любимеца"}, и не се притеснявайте — при нас фотосесиите са без стрес, с игра и почивки, колкото са нужни.</p>
+    <p style="color:#555;">До утре! Ако нещо се промени, пишете ни на ${STUDIO_EMAIL} или се обадете на ${STUDIO_PHONE}.</p>
+  `);
+
+  return { subject: `Напомняне: утре е фотосесията ви (${b.reference})`, html };
+}
+
+type VoucherRow = {
+  code: string;
+  package_name_bg: string | null;
+  package_price_eur: number | null;
+  recipient_name: string | null;
+  purchaser_name: string | null;
+  message: string | null;
+  expires_at: string | null;
+};
+
+export function voucherConfirmationEmail(v: VoucherRow): { subject: string; html: string } {
+  const toName = v.recipient_name || v.purchaser_name || "";
+  const expiresStr = v.expires_at ? formatDateBg(v.expires_at) : "—";
+
+  const html = wrapper(`
+    <h1 style="font-size:22px; color:${BRAND_INK}; margin:0 0 4px;">🎁 Подаръчен ваучер</h1>
+    <p style="color:#555; margin:0 0 20px;">Здравейте, ${toName} — ${v.purchaser_name && v.recipient_name ? `${v.purchaser_name} ви подари фотосесия!` : "заповядайте вашият ваучер за фотосесия!"}</p>
+
+    <div style="border:2px dashed ${BRAND_YELLOW}; border-radius:12px; padding:18px; text-align:center; margin-bottom:20px;">
+      <p style="margin:0 0 4px; color:#999; font-size:12px; text-transform:uppercase;">Код на ваучера</p>
+      <p style="margin:0 0 12px; font-family:monospace; font-size:22px; font-weight:bold; letter-spacing:1px;">${v.code}</p>
+      <p style="margin:0; color:#555;">Пакет: <strong>${v.package_name_bg || "—"}</strong> (${eur(v.package_price_eur)})</p>
+    </div>
+
+    ${v.message ? `<p style="font-style:italic; color:#555; border-left:3px solid ${BRAND_YELLOW}; padding-left:12px; margin-bottom:20px;">„${v.message}"</p>` : ""}
+
+    <p style="color:#555; line-height:1.6;">Валиден до <strong>${expiresStr}</strong>. За да го използвате, изберете час на <a href="https://booking.yellowdog.bg" style="color:#B8860B;">booking.yellowdog.bg</a> и въведете кода на ваучера при плащане.</p>
+  `);
+
+  return { subject: `Вашият подаръчен ваучер — Студио Жълто куче`, html };
+}

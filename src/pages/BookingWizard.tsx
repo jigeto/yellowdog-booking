@@ -168,6 +168,11 @@ export function BookingWizard() {
     const result = data as { booking_id: string; reference: string; amount_due_eur: number; payment_mode: string };
 
     if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.amount_due_eur <= 0) {
+      fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+        body: JSON.stringify({ booking_reference: result.reference }),
+      }).catch((e) => console.error('[send-confirmation-email] failed:', e));
       navigate(`/booking/${result.reference}/confirmation`);
       return;
     }

@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import Stripe from "npm:stripe@17.3.1";
+import { sendEmail } from "../_shared/resend.ts";
+import { bookingConfirmationEmail, voucherConfirmationEmail } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -60,6 +62,20 @@ Deno.serve(async (req: Request) => {
               p_stripe_payment_id: session.payment_intent as string,
               p_amount_paid: amountPaid,
             });
+
+            try {
+              const { data: booking } = await supabase
+                .from("booking_admin_view")
+                .select("*")
+                .eq("reference", reference)
+                .maybeSingle();
+              if (booking?.customer_email) {
+                const { subject, html } = bookingConfirmationEmail(booking);
+                await sendEmail(booking.customer_email, subject, html);
+              }
+            } catch (emailErr) {
+              console.error("[stripe-webhook] booking confirmation email failed:", emailErr);
+            }
           }
         } else if (type === "voucher") {
           const voucherId = session.metadata?.voucher_id;
@@ -71,6 +87,21 @@ Deno.serve(async (req: Request) => {
               p_stripe_payment_id: session.payment_intent as string,
               p_amount_paid: amountPaid,
             });
+
+            try {
+              const { data: voucher } = await supabase
+                .from("voucher_admin_view")
+                .select("*")
+                .eq("id", voucherId)
+                .maybeSingle();
+              const recipientEmail = voucher?.recipient_email || voucher?.purchaser_email;
+              if (voucher && recipientEmail) {
+                const { subject, html } = voucherConfirmationEmail(voucher);
+                await sendEmail(recipientEmail, subject, html);
+              }
+            } catch (emailErr) {
+              console.error("[stripe-webhook] voucher confirmation email failed:", emailErr);
+            }
           }
         }
         break;
