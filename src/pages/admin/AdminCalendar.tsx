@@ -329,34 +329,103 @@ function DayView({ slots, bookingBySlotId, statusColor, onSlotClick }: {
 // Create Slot Modal
 // ============================================================
 
+const WEEKDAYS: { label: string; jsDay: number }[] = [
+  { label: 'Пон', jsDay: 1 },
+  { label: 'Вт', jsDay: 2 },
+  { label: 'Ср', jsDay: 3 },
+  { label: 'Чет', jsDay: 4 },
+  { label: 'Пет', jsDay: 5 },
+  { label: 'Съб', jsDay: 6 },
+  { label: 'Нед', jsDay: 0 },
+];
+
 function CreateSlotModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [startTime, setStartTime] = useState('10:00');
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const [dateFrom, setDateFrom] = useState(today);
+  const [dateTo, setDateTo] = useState(today);
+  const [selectedDays, setSelectedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 0]));
+  const [times, setTimes] = useState<string[]>(['10:00']);
   const [duration, setDuration] = useState(120);
-  const [recurring, setRecurring] = useState(false);
-  const [recurringWeeks, setRecurringWeeks] = useState(4);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ created: number; skipped: number } | null>(null);
+
+  const toggleDay = (jsDay: number) => {
+    setSelectedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(jsDay)) next.delete(jsDay); else next.add(jsDay);
+      return next;
+    });
+  };
+
+  const updateTime = (i: number, value: string) => {
+    setTimes((prev) => prev.map((t, idx) => (idx === i ? value : t)));
+  };
+  const addTime = () => setTimes((prev) => [...prev, '10:00']);
+  const removeTime = (i: number) => setTimes((prev) => prev.filter((_, idx) => idx !== i));
+
+  // Compute every (day, time) combination within the range that matches the
+  // selected weekdays. This is the same list used both for the live preview
+  // count and for the actual insert, so what the admin sees is exactly what
+  // gets created.
+  const computedSlots = useMemo(() => {
+    const out: { starts_at: Date; ends_at: Date }[] = [];
+    if (!dateFrom || !dateTo || times.length === 0 || selectedDays.size === 0) return out;
+    const start = startOfDay(new Date(dateFrom + 'T00:00:00'));
+    const end = startOfDay(new Date(dateTo + 'T00:00:00'));
+    if (end < start) return out;
+    const days = eachDayOfInterval({ start, end });
+    for (const day of days) {
+      if (!selectedDays.has(day.getDay())) continue;
+      for (const t of times) {
+        if (!t) continue;
+        const starts_at = new Date(format(day, 'yyyy-MM-dd') + 'T' + t);
+        const ends_at = new Date(starts_at.getTime() + duration * 60000);
+        out.push({ starts_at, ends_at });
+      }
+    }
+    return out.sort((a, b) => a.starts_at.getTime() - b.starts_at.getTime());
+  }, [dateFrom, dateTo, selectedDays, times, duration]);
 
   const handleSubmit = async () => {
     setSubmitting(true);
     setError(null);
+    setResult(null);
 
-    const slotsToCreate: { starts_at: string; ends_at: string; status: 'available' }[] = [];
-    const baseDate = new Date(date + 'T' + startTime);
-    const endDate = new Date(baseDate.getTime() + duration * 60000);
-
-    if (recurring) {
-      for (let i = 0; i < recurringWeeks; i++) {
-        const d = new Date(baseDate.getTime() + i * 7 * 86400000);
-        const e = new Date(endDate.getTime() + i * 7 * 86400000);
-        slotsToCreate.push({ starts_at: d.toISOString(), ends_at: e.toISOString(), status: 'available' });
-      }
-    } else {
-      slotsToCreate.push({ starts_at: baseDate.toISOString(), ends_at: endDate.toISOString(), status: 'available' });
+    if (computedSlots.length === 0) {
+      setError('Няма нито един час, който отговаря на избраните дни/дати.');
+      setSubmitting(false);
+      return;
     }
 
-    const { error: insertError } = await supabase.from('time_slots').insert(slotsToCreate);
+    // Avoid creating duplicates of slots that already exist in this range.
+    const rangeStart = computedSlots[0].starts_at;
+    const rangeEnd = computedSlots[computedSlots.length - 1].starts_at;
+    const { data: existing, error: fetchErr } = await supabase
+      .from('time_slots')
+      .select('starts_at')
+      .gte('starts_at', rangeStart.toISOString())
+      .lte('starts_at', rangeEnd.toISOString());
+
+    if (fetchErr) {
+      setError(fetchErr.message);
+      setSubmitting(false);
+      return;
+    }
+
+    const existingSet = new Set((existing || []).map((s: { starts_at: string }) => new Date(s.starts_at).getTime()));
+    const toInsert = computedSlots.filter((s) => !existingSet.has(s.starts_at.getTime()));
+    const skipped = computedSlots.length - toInsert.length;
+
+    if (toInsert.length === 0) {
+      setResult({ created: 0, skipped });
+      setSubmitting(false);
+      return;
+    }
+
+    const { error: insertError } = await supabase.from('time_slots').insert(
+      toInsert.map((s) => ({ starts_at: s.starts_at.toISOString(), ends_at: s.ends_at.toISOString(), status: 'available' as const }))
+    );
     if (insertError) {
       setError(insertError.message);
       setSubmitting(false);
@@ -364,22 +433,66 @@ function CreateSlotModal({ onClose, onCreated }: { onClose: () => void; onCreate
     }
 
     onCreated();
-    onClose();
+    if (skipped > 0) {
+      setResult({ created: toInsert.length, skipped });
+      setSubmitting(false);
+    } else {
+      onClose();
+    }
   };
 
   return (
-    <Modal title="Нов час" onClose={onClose}>
+    <Modal title="Нови часове" onClose={onClose}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">Дата</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-field" />
+            <label className="label">От дата</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="input-field" />
           </div>
           <div>
-            <label className="label">Начален час</label>
-            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="input-field" />
+            <label className="label">До дата</label>
+            <input type="date" value={dateTo} min={dateFrom} onChange={(e) => setDateTo(e.target.value)} className="input-field" />
           </div>
         </div>
+
+        <div>
+          <label className="label">Дни от седмицата</label>
+          <div className="flex flex-wrap gap-1.5">
+            {WEEKDAYS.map((d) => (
+              <button
+                key={d.jsDay}
+                type="button"
+                onClick={() => toggleDay(d.jsDay)}
+                className={classNames(
+                  'px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
+                  selectedDays.has(d.jsDay) ? 'bg-yellow-400 border-yellow-400 text-ink-800' : 'bg-white border-ink-200 text-ink-500 hover:bg-ink-50'
+                )}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Часове на ден</label>
+          <div className="space-y-2">
+            {times.map((t, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input type="time" value={t} onChange={(e) => updateTime(i, e.target.value)} className="input-field" />
+                {times.length > 1 && (
+                  <button type="button" onClick={() => removeTime(i)} className="p-2 hover:bg-ink-50 rounded-lg text-ink-400">
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={addTime} className="text-sm text-ink-600 hover:text-ink-800 flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Добави час
+            </button>
+          </div>
+        </div>
+
         <div>
           <label className="label">Продължителност (минути)</label>
           <select value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="input-field">
@@ -389,20 +502,21 @@ function CreateSlotModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <option value={180}>180 мин</option>
           </select>
         </div>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="w-4 h-4 rounded border-ink-300 text-yellow-400" />
-          <span className="text-sm text-ink-700">Повтаряй седмично</span>
-        </label>
-        {recurring && (
-          <div>
-            <label className="label">Брой седмици</label>
-            <input type="number" min={1} max={52} value={recurringWeeks} onChange={(e) => setRecurringWeeks(parseInt(e.target.value) || 1)} className="input-field" />
-          </div>
+
+        <div className="bg-ink-50 rounded-lg px-3 py-2 text-sm text-ink-600">
+          Ще бъдат създадени <strong className="text-ink-800">{computedSlots.length}</strong> часа.
+        </div>
+
+        {result && (
+          <p className="text-sm text-success-600">
+            Създадени: {result.created}. {result.skipped > 0 && `Пропуснати (вече съществуват): ${result.skipped}.`}
+          </p>
         )}
         {error && <p className="text-sm text-error-600">{error}</p>}
+
         <div className="flex gap-2 justify-end pt-2">
-          <button onClick={onClose} className="btn-secondary">Отказ</button>
-          <button onClick={handleSubmit} disabled={submitting} className="btn-primary">
+          <button onClick={onClose} className="btn-secondary">{result ? 'Затвори' : 'Отказ'}</button>
+          <button onClick={handleSubmit} disabled={submitting || computedSlots.length === 0} className="btn-primary">
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Създай'}
           </button>
         </div>
