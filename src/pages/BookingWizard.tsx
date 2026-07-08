@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, type Package, type TimeSlot, type Settings, type ValidateVoucherResult } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey, type Package, type TimeSlot, type Settings, type ValidateVoucherResult } from '../lib/supabase';
 import { loadSettings, formatEUR, formatTime, classNames } from '../lib/utils';
 import { Check, ChevronLeft, ChevronRight, Calendar, Clock, User, CreditCard, CheckCircle, Sparkles, Album, Camera, AlertCircle, Loader2, Dog, Cat, PawPrint } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
@@ -174,13 +174,13 @@ export function BookingWizard() {
 
     if (result.amount_due_eur > 0) {
       try {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+        const apiUrl = `${supabaseUrl}/functions/v1/create-checkout-session`;
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${supabaseAnonKey}`,
+            apikey: supabaseAnonKey,
           },
           body: JSON.stringify({ booking_reference: result.reference, mode: result.payment_mode }),
         });

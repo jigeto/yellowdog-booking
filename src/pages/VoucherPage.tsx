@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, type Settings, type Package } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey, type Settings, type Package } from '../lib/supabase';
 import { loadSettings, formatEUR, classNames } from '../lib/utils';
 import { Gift, Loader2, AlertCircle, Sparkles, Camera, Clock, Album, Check } from 'lucide-react';
 
@@ -53,13 +53,13 @@ export function VoucherPage() {
     setSubmitting(true);
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout-session`;
+      const apiUrl = `${supabaseUrl}/functions/v1/create-checkout-session`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${supabaseAnonKey}`,
+          apikey: supabaseAnonKey,
         },
         body: JSON.stringify({
           voucher: {

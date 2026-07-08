@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type Booking } from '../../lib/supabase';
+import { supabase, supabaseUrl, type Booking } from '../../lib/supabase';
 import { classNames, formatEUR, formatDateTime } from '../../lib/utils';
 import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter } from 'lucide-react';
 import { parseISO } from 'date-fns';
@@ -90,7 +90,7 @@ export function AdminBookings() {
   const handleRefund = async (booking: Booking) => {
     setActionLoading(true);
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refund`;
+      const apiUrl = `${supabaseUrl}/functions/v1/refund`;
       await fetch(apiUrl, {
         method: 'POST',
         headers: {
