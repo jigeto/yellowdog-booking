@@ -14,14 +14,27 @@ const BG_MONTHS = [
   "юли", "август", "септември", "октомври", "ноември", "декември",
 ];
 
-function formatDateBg(iso: string): string {
+function sofiaParts(iso: string): Record<string, string> {
   const d = new Date(iso);
-  return `${d.getDate()} ${BG_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Sofia",
+    year: "numeric", month: "numeric", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  return fmt.formatToParts(d).reduce((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {} as Record<string, string>);
+}
+
+function formatDateBg(iso: string): string {
+  const p = sofiaParts(iso);
+  return `${parseInt(p.day)} ${BG_MONTHS[parseInt(p.month) - 1]} ${p.year}`;
 }
 
 function formatTimeBg(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("bg-BG", { hour: "2-digit", minute: "2-digit" });
+  const p = sofiaParts(iso);
+  return `${p.hour}:${p.minute}`;
 }
 
 function eur(n: number | null | undefined): string {
