@@ -56,12 +56,16 @@ Deno.serve(async (req: Request) => {
           const reference = session.metadata?.booking_reference;
           if (reference) {
             const amountPaid = (session.amount_total || 0) / 100;
-            await supabase.rpc("confirm_booking_payment", {
+            const { error: confirmErr } = await supabase.rpc("confirm_booking_payment", {
               p_reference: reference,
               p_stripe_session_id: session.id,
               p_stripe_payment_id: session.payment_intent as string,
               p_amount_paid: amountPaid,
             });
+
+            if (confirmErr) {
+              console.error(`[stripe-webhook] confirm_booking_payment failed for ${reference}:`, confirmErr);
+            }
 
             try {
               const { data: booking } = await supabase
@@ -81,12 +85,16 @@ Deno.serve(async (req: Request) => {
           const voucherId = session.metadata?.voucher_id;
           if (voucherId) {
             const amountPaid = (session.amount_total || 0) / 100;
-            await supabase.rpc("confirm_voucher_payment", {
+            const { error: confirmErr } = await supabase.rpc("confirm_voucher_payment", {
               p_voucher_id: voucherId,
               p_stripe_session_id: session.id,
               p_stripe_payment_id: session.payment_intent as string,
               p_amount_paid: amountPaid,
             });
+
+            if (confirmErr) {
+              console.error(`[stripe-webhook] confirm_voucher_payment failed for ${voucherId}:`, confirmErr);
+            }
 
             // Belt-and-braces: confirm_voucher_payment predates the
             // pending_payment status, so make sure a successful payment
