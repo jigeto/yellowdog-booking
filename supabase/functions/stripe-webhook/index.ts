@@ -61,6 +61,7 @@ Deno.serve(async (req: Request) => {
               p_stripe_session_id: session.id,
               p_stripe_payment_id: session.payment_intent as string,
               p_amount_paid: amountPaid,
+              p_mode: session.metadata?.mode || null,
             });
 
             if (confirmErr) {

@@ -93,6 +93,7 @@ Deno.serve(async (req: Request) => {
           type: "booking",
           booking_reference: booking.reference,
           booking_id: booking.id,
+          mode: isFull ? "full" : "deposit",
         },
         client_reference_id: booking.reference,
       });
