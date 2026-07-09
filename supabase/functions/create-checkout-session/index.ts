@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
     if (body.booking_reference) {
       const { data: booking, error } = await supabase
         .from("bookings")
-        .select("*, packages!bookings_package_slug_fkey(name_bg, price_eur)")
+        .select("*, packages(name_bg, price_eur)")
         .eq("reference", body.booking_reference)
         .maybeSingle();
 
@@ -42,7 +42,9 @@ Deno.serve(async (req: Request) => {
         throw new Error("Booking not found");
       }
 
-      if (booking.amount_due_eur <= 0) {
+      const amountDue = (booking.total_eur ?? 0) - (booking.amount_paid_eur ?? 0);
+
+      if (amountDue <= 0) {
         return new Response(
           JSON.stringify({ error: "No payment required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -51,9 +53,10 @@ Deno.serve(async (req: Request) => {
 
       const mode = body.mode || booking.payment_mode;
       const isFull = mode === "full";
+      const packageName = booking.packages?.name_bg || "фотосесия";
       const label = isFull
-        ? `Фотосесия ${booking.packages?.name_bg || booking.package_slug} — пълно плащане`
-        : `Капаро за фотосесия ${booking.packages?.name_bg || booking.package_slug}`;
+        ? `Фотосесия ${packageName} — пълно плащане`
+        : `Капаро за фотосесия ${packageName}`;
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -62,7 +65,7 @@ Deno.serve(async (req: Request) => {
             price_data: {
               currency: "eur",
               product_data: { name: label },
-              unit_amount: Math.round(booking.amount_due_eur * 100),
+              unit_amount: Math.round(amountDue * 100),
             },
             quantity: 1,
           },
