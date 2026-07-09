@@ -176,7 +176,7 @@ export function BookingWizard() {
 
     const result = data as { booking_id: string; reference: string; amount_due_eur: number; payment_mode: string };
 
-    if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.amount_due_eur <= 0) {
+    if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.payment_mode === 'voucher_upgrade' || result.amount_due_eur <= 0) {
       fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
@@ -950,7 +950,9 @@ function StepReview({
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-ink-400 uppercase tracking-wider mb-1">За плащане сега</p>
+              <p className="text-xs text-ink-400 uppercase tracking-wider mb-1">
+                {form.paymentOption === 'voucher' ? 'Доплащане на място' : 'За плащане сега'}
+              </p>
               <p className="font-serif text-2xl text-ink-800">{formatEUR(amountDue)}</p>
             </div>
           </div>
