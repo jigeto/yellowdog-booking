@@ -124,7 +124,7 @@ Deno.serve(async (req: Request) => {
 
       const { data: pkg, error: pkgError } = await supabase
         .from("packages")
-        .select("slug, name_bg, price_eur")
+        .select("id, slug, name_bg, price_eur")
         .eq("slug", v.package_slug)
         .eq("active", true)
         .maybeSingle();
@@ -141,10 +141,9 @@ Deno.serve(async (req: Request) => {
         .from("vouchers")
         .insert({
           code,
-          kind: "gift_package",
-          package_slug: pkg.slug,
-          package_name_bg: pkg.name_bg,
-          package_price_eur: pkg.price_eur,
+          type: "gift_package",
+          package_id: pkg.id,
+          amount_eur: pkg.price_eur,
           purchaser_name: v.purchaser.name,
           purchaser_email: v.purchaser.email,
           recipient_name: v.recipient?.name || null,
