@@ -42,7 +42,10 @@ Deno.serve(async (req: Request) => {
         throw new Error("Booking not found");
       }
 
-      const amountDue = (booking.total_eur ?? 0) - (booking.amount_paid_eur ?? 0);
+      const remainingTotal = (booking.total_eur ?? 0) - (booking.amount_paid_eur ?? 0);
+      const mode = body.mode || booking.payment_mode;
+      const isFull = mode === "full";
+      const amountDue = isFull ? remainingTotal : Math.min(booking.deposit_eur ?? 0, remainingTotal);
 
       if (amountDue <= 0) {
         return new Response(
@@ -50,9 +53,6 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-
-      const mode = body.mode || booking.payment_mode;
-      const isFull = mode === "full";
       const packageName = booking.packages?.name_bg || "фотосесия";
       const label = isFull
         ? `Фотосесия ${packageName} — пълно плащане`
