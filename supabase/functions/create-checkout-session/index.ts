@@ -45,7 +45,23 @@ Deno.serve(async (req: Request) => {
       const remainingTotal = (booking.total_eur ?? 0) - (booking.amount_paid_eur ?? 0);
       const mode = body.mode || booking.payment_mode;
       const isFull = mode === "full";
-      const amountDue = isFull ? remainingTotal : Math.min(booking.deposit_eur ?? 0, remainingTotal);
+
+      let amountDue = isFull ? remainingTotal : Math.min(booking.deposit_eur ?? 0, remainingTotal);
+
+      // Full upfront payment gets the configurable prepay discount (same
+      // setting the frontend reads to show the discounted price). Only
+      // applies when paying everything upfront in one go (amount_paid_eur
+      // is 0 at that point) — the remaining balance after a deposit is
+      // always settled in person at the studio, never online.
+      if (isFull && (booking.amount_paid_eur ?? 0) === 0) {
+        const { data: settingRow } = await supabase
+          .from("settings")
+          .select("value")
+          .eq("key", "prepay_discount_pct")
+          .maybeSingle();
+        const discountPct = parseFloat(settingRow?.value || "5");
+        amountDue = remainingTotal * (1 - discountPct / 100);
+      }
 
       if (amountDue <= 0) {
         return new Response(
