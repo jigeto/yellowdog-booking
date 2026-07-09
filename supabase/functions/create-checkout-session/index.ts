@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
           recipient_name: v.recipient?.name || null,
           recipient_email: v.recipient?.email || null,
           message: v.message || null,
-          status: "active",
+          status: "pending_payment",
           source: "purchase",
           expires_at: expiresAt,
         })

@@ -104,7 +104,7 @@ export type Voucher = {
   recipient_name: string | null;
   recipient_email: string | null;
   message: string | null;
-  status: 'active' | 'redeemed' | 'expired' | 'cancelled';
+  status: 'pending_payment' | 'active' | 'redeemed' | 'expired' | 'cancelled';
   expires_at: string;
   redeemed_booking_id: string | null;
   created_at: string;

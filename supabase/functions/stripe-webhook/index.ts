@@ -88,6 +88,16 @@ Deno.serve(async (req: Request) => {
               p_amount_paid: amountPaid,
             });
 
+            // Belt-and-braces: confirm_voucher_payment predates the
+            // pending_payment status, so make sure a successful payment
+            // always flips the voucher to active regardless of what that
+            // RPC does internally.
+            await supabase
+              .from("vouchers")
+              .update({ status: "active" })
+              .eq("id", voucherId)
+              .eq("status", "pending_payment");
+
             try {
               const { data: voucher } = await supabase
                 .from("voucher_admin_view")

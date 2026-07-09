@@ -4,15 +4,19 @@ import { classNames, formatEUR, formatDate } from '../../lib/utils';
 import { Plus, X, Loader2, Search, Gift, Ticket, Filter, Copy, Check, Sparkles } from 'lucide-react';
 
 const STATUS_LABELS: Record<string, string> = {
+  pending_payment: 'Чака плащане',
   active: 'Активен',
   redeemed: 'Използван',
   expired: 'Изтекъл',
+  cancelled: 'Отказан',
 };
 
 const STATUS_COLORS: Record<string, string> = {
+  pending_payment: 'bg-yellow-100 text-yellow-700',
   active: 'bg-success-100 text-success-700',
   redeemed: 'bg-ink-100 text-ink-600',
   expired: 'bg-error-100 text-error-700',
+  cancelled: 'bg-error-50 text-error-500',
 };
 
 const KIND_LABELS: Record<string, string> = {
@@ -88,9 +92,11 @@ export function AdminVouchers() {
             <Filter className="w-4 h-4 text-ink-400" />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field w-auto">
               <option value="all">Всички статуси</option>
+              <option value="pending_payment">Чакащи плащане</option>
               <option value="active">Активни</option>
               <option value="redeemed">Използвани</option>
               <option value="expired">Изтекли</option>
+              <option value="cancelled">Отказани</option>
             </select>
             <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} className="input-field w-auto">
               <option value="all">Всички типове</option>

@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseAnonKey, type Package, type TimeSlot, type Settings, type ValidateVoucherResult } from '../lib/supabase';
 import { loadSettings, formatEUR, formatTime, classNames } from '../lib/utils';
-import { Check, ChevronLeft, ChevronRight, Calendar, Clock, User, CreditCard, CheckCircle, Sparkles, Album, Camera, AlertCircle, Loader2, Dog, Cat, PawPrint } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Calendar, Clock, User, CreditCard, CheckCircle, Sparkles, Album, Camera, AlertCircle, Loader2, Dog, Cat, PawPrint, X } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { bg } from 'date-fns/locale';
 
@@ -36,6 +36,15 @@ const STEPS = [
 export function BookingWizard() {
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(1);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showCancelledNotice, setShowCancelledNotice] = useState(() => searchParams.get('cancelled') === '1');
+
+  useEffect(() => {
+    if (searchParams.get('cancelled') === '1') {
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [packages, setPackages] = useState<Package[]>([]);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [settings, setSettings] = useState<Settings>({});
@@ -217,6 +226,20 @@ export function BookingWizard() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+      {showCancelledNotice && (
+        <div className="mb-8 flex items-start gap-3 rounded-2xl bg-yellow-50 border border-yellow-200 px-5 py-4 animate-fade-in">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-ink-700">
+              Плащането беше прекъснато или отказано, затова резервацията не е завършена. Часът остава свободен само за кратко — ако все още го искате, моля направете резервацията отначало.
+            </p>
+          </div>
+          <button onClick={() => setShowCancelledNotice(false)} className="text-ink-400 hover:text-ink-600 flex-shrink-0">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Hero */}
       <div className="text-center mb-10 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-medium mb-4">
