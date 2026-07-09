@@ -135,7 +135,7 @@ Deno.serve(async (req: Request) => {
 
       const code = "YDS-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
       const validMonths = 6;
-      const expiresAt = new Date(Date.now() + validMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
+      const validUntil = new Date(Date.now() + validMonths * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
       const { data: voucher, error: vError } = await supabase
         .from("vouchers")
@@ -152,7 +152,7 @@ Deno.serve(async (req: Request) => {
           message: v.message || null,
           status: "pending_payment",
           source: "purchase",
-          expires_at: expiresAt,
+          valid_until: validUntil,
         })
         .select()
         .maybeSingle();
