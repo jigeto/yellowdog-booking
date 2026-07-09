@@ -81,10 +81,13 @@ Deno.serve(async (req: Request) => {
         client_reference_id: booking.reference,
       });
 
-      await supabase
+      const { error: updateErr } = await supabase
         .from("bookings")
-        .update({ stripe_session_id: session.id, stripe_session_url: session.url })
+        .update({ stripe_session_id: session.id })
         .eq("id", booking.id);
+      if (updateErr) {
+        console.error(`[create-checkout-session] failed to store stripe_session_id for ${booking.reference}:`, updateErr);
+      }
 
       return new Response(
         JSON.stringify({ url: session.url, session_id: session.id }),

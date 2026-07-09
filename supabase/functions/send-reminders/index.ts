@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
       .from("booking_admin_view")
       .select("*")
       .eq("status", "confirmed")
-      .eq("reminder_sent", false)
+      .is("reminder_sent_at", null)
       .gte("starts_at", windowStart)
       .lte("starts_at", windowEnd);
 
@@ -52,7 +52,7 @@ Deno.serve(async (req: Request) => {
       // Mark as handled regardless of send outcome so a persistent Resend
       // issue doesn't retry-spam the same booking forever; failures are
       // visible in the function logs for manual follow-up.
-      await supabase.from("bookings").update({ reminder_sent: true }).eq("id", booking.id);
+      await supabase.from("bookings").update({ reminder_sent_at: new Date().toISOString() }).eq("id", booking.id);
     }
 
     return new Response(

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase, supabaseUrl, type Booking } from '../../lib/supabase';
 import { classNames, formatEUR, formatDateTime } from '../../lib/utils';
-import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter } from 'lucide-react';
+import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { format } from 'date-fns';
@@ -46,6 +46,7 @@ export function AdminBookings() {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [dateSort, setDateSort] = useState<'asc' | 'desc' | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -63,19 +64,32 @@ export function AdminBookings() {
   useEffect(() => { load(); }, []);
 
   const filtered = useMemo(() => {
-    return bookings.filter((b) => {
+    const result = bookings.filter((b) => {
       if (statusFilter !== 'all' && b.status !== statusFilter) return false;
       if (search) {
         const s = search.toLowerCase();
         return (
           b.reference.toLowerCase().includes(s) ||
           b.pet_name?.toLowerCase().includes(s) ||
-          b.customer_name?.toLowerCase().includes(s)
+          b.customer_name?.toLowerCase().includes(s) ||
+          b.customer_phone?.toLowerCase().includes(s)
         );
       }
       return true;
     });
-  }, [bookings, search, statusFilter]);
+    if (dateSort) {
+      result.sort((a, b) => {
+        const aTime = a.starts_at ? new Date(a.starts_at).getTime() : 0;
+        const bTime = b.starts_at ? new Date(b.starts_at).getTime() : 0;
+        return dateSort === 'asc' ? aTime - bTime : bTime - aTime;
+      });
+    }
+    return result;
+  }, [bookings, search, statusFilter, dateSort]);
+
+  const toggleDateSort = () => {
+    setDateSort((prev) => (prev === null ? 'asc' : prev === 'asc' ? 'desc' : null));
+  };
 
   const handleAction = async (booking: Booking, action: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => {
     setActionLoading(true);
@@ -191,7 +205,14 @@ export function AdminBookings() {
             <thead>
               <tr className="border-b border-ink-100 text-left text-xs text-ink-400 uppercase tracking-wider">
                 <th className="px-4 py-3 font-medium">Референция</th>
-                <th className="px-4 py-3 font-medium">Дата/час</th>
+                <th className="px-4 py-3 font-medium">Клиент</th>
+                <th className="px-4 py-3 font-medium select-none cursor-pointer hover:text-ink-600" onClick={toggleDateSort}>
+                  <span className="inline-flex items-center gap-1">
+                    Дата/час
+                    {dateSort === 'asc' && <ArrowUp className="w-3 h-3" />}
+                    {dateSort === 'desc' && <ArrowDown className="w-3 h-3" />}
+                  </span>
+                </th>
                 <th className="px-4 py-3 font-medium">Любимец</th>
                 <th className="px-4 py-3 font-medium">Пакет</th>
                 <th className="px-4 py-3 font-medium">Статус</th>
@@ -204,6 +225,10 @@ export function AdminBookings() {
               {filtered.map((b) => (
                 <tr key={b.id} className="border-b border-ink-50 hover:bg-cream-50 transition-colors cursor-pointer" onClick={() => { setSelectedBooking(b); setActionError(null); }}>
                   <td className="px-4 py-3 font-mono text-sm text-ink-800">{b.reference}</td>
+                  <td className="px-4 py-3 text-sm text-ink-600">
+                    <div className="font-medium text-ink-800">{b.customer_name || '—'}</div>
+                    <div className="text-xs text-ink-400">{b.customer_phone || '—'}</div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-ink-600">
                     {b.starts_at ? format(parseISO(b.starts_at), 'd MMM, HH:mm', { locale: bg }) : '—'}
                   </td>

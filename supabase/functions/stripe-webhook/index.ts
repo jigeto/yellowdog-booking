@@ -56,7 +56,7 @@ Deno.serve(async (req: Request) => {
           const reference = session.metadata?.booking_reference;
           if (reference) {
             const amountPaid = (session.amount_total || 0) / 100;
-            const { error: confirmErr } = await supabase.rpc("confirm_booking_payment", {
+            const { data: isFirst, error: confirmErr } = await supabase.rpc("confirm_booking_payment", {
               p_reference: reference,
               p_stripe_session_id: session.id,
               p_stripe_payment_id: session.payment_intent as string,
@@ -67,25 +67,27 @@ Deno.serve(async (req: Request) => {
               console.error(`[stripe-webhook] confirm_booking_payment failed for ${reference}:`, confirmErr);
             }
 
-            try {
-              const { data: booking } = await supabase
-                .from("booking_admin_view")
-                .select("*")
-                .eq("reference", reference)
-                .maybeSingle();
-              if (booking?.customer_email) {
-                const { subject, html } = bookingConfirmationEmail(booking);
-                await sendEmail(booking.customer_email, subject, html);
+            if (isFirst) {
+              try {
+                const { data: booking } = await supabase
+                  .from("booking_admin_view")
+                  .select("*")
+                  .eq("reference", reference)
+                  .maybeSingle();
+                if (booking?.customer_email) {
+                  const { subject, html } = bookingConfirmationEmail(booking);
+                  await sendEmail(booking.customer_email, subject, html);
+                }
+              } catch (emailErr) {
+                console.error("[stripe-webhook] booking confirmation email failed:", emailErr);
               }
-            } catch (emailErr) {
-              console.error("[stripe-webhook] booking confirmation email failed:", emailErr);
             }
           }
         } else if (type === "voucher") {
           const voucherId = session.metadata?.voucher_id;
           if (voucherId) {
             const amountPaid = (session.amount_total || 0) / 100;
-            const { error: confirmErr } = await supabase.rpc("confirm_voucher_payment", {
+            const { data: isFirst, error: confirmErr } = await supabase.rpc("confirm_voucher_payment", {
               p_voucher_id: voucherId,
               p_stripe_session_id: session.id,
               p_stripe_payment_id: session.payment_intent as string,
@@ -96,29 +98,21 @@ Deno.serve(async (req: Request) => {
               console.error(`[stripe-webhook] confirm_voucher_payment failed for ${voucherId}:`, confirmErr);
             }
 
-            // Belt-and-braces: confirm_voucher_payment predates the
-            // pending_payment status, so make sure a successful payment
-            // always flips the voucher to active regardless of what that
-            // RPC does internally.
-            await supabase
-              .from("vouchers")
-              .update({ status: "active" })
-              .eq("id", voucherId)
-              .eq("status", "pending_payment");
-
-            try {
-              const { data: voucher } = await supabase
-                .from("voucher_admin_view")
-                .select("*")
-                .eq("id", voucherId)
-                .maybeSingle();
-              const recipientEmail = voucher?.recipient_email || voucher?.purchaser_email;
-              if (voucher && recipientEmail) {
-                const { subject, html } = voucherConfirmationEmail(voucher);
-                await sendEmail(recipientEmail, subject, html);
+            if (isFirst) {
+              try {
+                const { data: voucher } = await supabase
+                  .from("voucher_admin_view")
+                  .select("*")
+                  .eq("id", voucherId)
+                  .maybeSingle();
+                const recipientEmail = voucher?.recipient_email || voucher?.purchaser_email;
+                if (voucher && recipientEmail) {
+                  const { subject, html } = voucherConfirmationEmail(voucher);
+                  await sendEmail(recipientEmail, subject, html);
+                }
+              } catch (emailErr) {
+                console.error("[stripe-webhook] voucher confirmation email failed:", emailErr);
               }
-            } catch (emailErr) {
-              console.error("[stripe-webhook] voucher confirmation email failed:", emailErr);
             }
           }
         }
@@ -131,7 +125,7 @@ Deno.serve(async (req: Request) => {
         if (sessionId) {
           await supabase
             .from("bookings")
-            .update({ payment_status: "refunded", updated_at: new Date().toISOString() })
+            .update({ payment_status: "refunded" })
             .eq("reference", sessionId);
         }
         break;
