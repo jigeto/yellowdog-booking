@@ -43,6 +43,10 @@ export function BookingWizard() {
     if (searchParams.get('cancelled') === '1') {
       setSearchParams({}, { replace: true });
     }
+    if (searchParams.get('voucher')) {
+      setSearchParams({}, { replace: true });
+      validateVoucher();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [packages, setPackages] = useState<Package[]>([]);
@@ -54,21 +58,24 @@ export function BookingWizard() {
   const [voucherResult, setVoucherResult] = useState<ValidateVoucherResult | null>(null);
   const [voucherLoading, setVoucherLoading] = useState(false);
 
-  const [form, setForm] = useState<FormData>({
-    packageSlug: '',
-    slotId: '',
-    fullName: '',
-    email: '',
-    phone: '',
-    petName: '',
-    petSpecies: 'dog',
-    petBreed: '',
-    numPets: 1,
-    note: '',
-    gdprConsent: false,
-    marketingConsent: false,
-    paymentOption: 'deposit',
-    voucherCode: '',
+  const [form, setForm] = useState<FormData>(() => {
+    const voucherFromUrl = searchParams.get('voucher')?.trim().toUpperCase() || '';
+    return {
+      packageSlug: '',
+      slotId: '',
+      fullName: '',
+      email: '',
+      phone: '',
+      petName: '',
+      petSpecies: 'dog',
+      petBreed: '',
+      numPets: 1,
+      note: '',
+      gdprConsent: false,
+      marketingConsent: false,
+      paymentOption: voucherFromUrl ? 'voucher' : 'deposit',
+      voucherCode: voucherFromUrl,
+    };
   });
 
   useEffect(() => {
