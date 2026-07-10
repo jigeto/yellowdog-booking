@@ -1,7 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { sendEmail } from "../_shared/resend.ts";
-import { bookingConfirmationEmail } from "../_shared/email-templates.ts";
+import { bookingConfirmationEmail, generateBookingICS, adminBookingNotificationEmail } from "../_shared/email-templates.ts";
+
+const OFFICE_EMAIL = "office@yellowdog.bg";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -46,8 +48,14 @@ Deno.serve(async (req: Request) => {
 
     if (booking.customer_email) {
       const { subject, html } = bookingConfirmationEmail(booking);
-      await sendEmail(booking.customer_email, subject, html);
+      const icsContent = generateBookingICS(booking);
+      const icsBase64 = btoa(unescape(encodeURIComponent(icsContent)));
+      await sendEmail(booking.customer_email, subject, html, [
+        { filename: "fotosesiya.ics", content: icsBase64 },
+      ]);
     }
+    const { subject: officeSubject, html: officeHtml } = adminBookingNotificationEmail(booking);
+    await sendEmail(OFFICE_EMAIL, officeSubject, officeHtml);
 
     return new Response(
       JSON.stringify({ sent: true }),

@@ -59,12 +59,16 @@ function wrapper(bodyHtml: string): string {
 </div>`.trim();
 }
 
+const STUDIO_PREP_URL = "https://yellowdog.bg/studio/kak-da-se-podgotvim";
+
 type BookingRow = {
   reference: string;
   package_name_bg: string | null;
   starts_at: string | null;
   ends_at: string | null;
   customer_name: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
   pet_name: string | null;
   num_pets: number;
   total_eur: number;
@@ -97,9 +101,70 @@ export function bookingConfirmationEmail(b: BookingRow): { subject: string; html
 
     <p style="color:#555; line-height:1.6;">Адрес на студиото: <strong>${STUDIO_ADDRESS}</strong>.<br/>
     Ще ви пратим и напомняне ден преди фотосесията. Ако имате въпроси или искате да промените часа, пишете ни на ${STUDIO_EMAIL} или се обадете на ${STUDIO_PHONE}.</p>
+
+    <p style="color:#555; line-height:1.6;">Как да се подготвите за фотосесията може да прочетете <a href="${STUDIO_PREP_URL}" style="color:#B8860B;">на този линк</a>.</p>
+
+    <p style="margin-top:16px; color:#8a8a80; font-size:13px;">📅 Прикачили сме и файл за календара ви — отворете го, за да добавите часа в Google/Apple Calendar.</p>
   `);
 
   return { subject: `Потвърждение на резервация ${b.reference} — Студио Жълто куче`, html };
+}
+
+export function generateBookingICS(b: BookingRow): string {
+  const esc = (s: string) => s.replace(/([,;])/g, "\\$1").replace(/\n/g, "\\n");
+  const toICSDate = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+  const now = toICSDate(new Date().toISOString());
+  const start = b.starts_at ? toICSDate(b.starts_at) : now;
+  const end = b.ends_at ? toICSDate(b.ends_at) : start;
+  const summary = esc(`Фотосесия ${b.package_name_bg || ""} — Студио Жълто куче`.trim());
+  const description = esc(
+    `Референция: ${b.reference}\\nПакет: ${b.package_name_bg || "—"}\\nЛюбимец: ${b.pet_name || "—"}`
+  );
+  const location = esc(STUDIO_ADDRESS);
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Studio Yellow Dog//Booking//BG",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${b.reference}@yellowdog.bg`,
+    `DTSTAMP:${now}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${summary}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+}
+
+export function adminBookingNotificationEmail(b: BookingRow): { subject: string; html: string } {
+  const dateStr = b.starts_at ? `${formatDateBg(b.starts_at)}, ${formatTimeBg(b.starts_at)}ч.` : "—";
+  const paidLine =
+    b.amount_due_eur > 0
+      ? `Платено: ${eur(b.amount_paid_eur)} · Остатък на място: ${eur(b.amount_due_eur)}`
+      : `Платено изцяло: ${eur(b.amount_paid_eur)}`;
+
+  const html = wrapper(`
+    <h1 style="font-size:20px; color:${BRAND_INK}; margin:0 0 16px;">🔔 Нова резервация</h1>
+    <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Референция</td><td style="padding:6px 0; text-align:right; font-family:monospace; font-weight:bold;">${b.reference}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Клиент</td><td style="padding:6px 0; text-align:right;">${b.customer_name || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Телефон</td><td style="padding:6px 0; text-align:right;">${b.customer_phone || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Имейл</td><td style="padding:6px 0; text-align:right;">${b.customer_email || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Пакет</td><td style="padding:6px 0; text-align:right;">${b.package_name_bg || "—"}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Дата и час</td><td style="padding:6px 0; text-align:right;">${dateStr}</td></tr>
+      <tr><td style="padding:6px 0; color:#999; font-size:13px; text-transform:uppercase;">Любимец</td><td style="padding:6px 0; text-align:right;">${b.pet_name || "—"} (${b.num_pets} бр.)</td></tr>
+    </table>
+    <div style="background:#FFF8E5; border-radius:10px; padding:14px 16px;">
+      <p style="margin:0; color:#555;">${paidLine}</p>
+    </div>
+  `);
+
+  return { subject: `Нова резервация: ${b.reference}`, html };
 }
 
 export function bookingReminderEmail(b: BookingRow): { subject: string; html: string } {
