@@ -133,7 +133,12 @@ Deno.serve(async (req: Request) => {
         throw new Error("Invalid package");
       }
 
-      const code = "YDS-" + Math.random().toString(36).substring(2, 6).toUpperCase() + "-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid confusion
+      let codeSuffix = "";
+      for (let i = 0; i < 6; i++) {
+        codeSuffix += codeChars[Math.floor(Math.random() * codeChars.length)];
+      }
+      const code = "YD-" + codeSuffix;
       const validMonths = 6;
       const validUntil = new Date(Date.now() + validMonths * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
