@@ -3,6 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import Stripe from "npm:stripe@17.3.1";
 import { sendEmail } from "../_shared/resend.ts";
 import { bookingConfirmationEmail, voucherConfirmationEmail, generateBookingICS, adminBookingNotificationEmail } from "../_shared/email-templates.ts";
+import { generateVoucherPDF } from "../_shared/voucher-pdf.ts";
 
 const OFFICE_EMAIL = "office@yellowdog.bg";
 
@@ -119,7 +120,21 @@ Deno.serve(async (req: Request) => {
                 const recipientEmail = voucher?.recipient_email || voucher?.purchaser_email;
                 if (voucher && recipientEmail) {
                   const { subject, html } = voucherConfirmationEmail(voucher);
-                  await sendEmail(recipientEmail, subject, html);
+                  try {
+                    const pdfBytes = await generateVoucherPDF(voucher);
+                    let binary = "";
+                    const chunkSize = 8192;
+                    for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+                      binary += String.fromCharCode(...pdfBytes.subarray(i, i + chunkSize));
+                    }
+                    const pdfBase64 = btoa(binary);
+                    await sendEmail(recipientEmail, subject, html, [
+                      { filename: `vaucher-${voucher.code}.pdf`, content: pdfBase64 },
+                    ]);
+                  } catch (pdfErr) {
+                    console.error("[stripe-webhook] voucher PDF generation failed:", pdfErr);
+                    await sendEmail(recipientEmail, subject, html);
+                  }
                 }
               } catch (emailErr) {
                 console.error("[stripe-webhook] voucher confirmation email failed:", emailErr);
