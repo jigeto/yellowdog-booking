@@ -24,7 +24,8 @@ const BG_MONTHS = [
 ];
 
 function formatDateBg(dateStr: string): string {
-  // valid_until is a plain `date` column (YYYY-MM-DD), no timezone conversion needed
+  // expires_at (aliased from vouchers.valid_until in voucher_admin_view) is
+  // a plain `date` column (YYYY-MM-DD), no timezone conversion needed
   const [y, m, d] = dateStr.split("-").map(Number);
   return `${d} ${BG_MONTHS[m - 1]} ${y}`;
 }
@@ -35,7 +36,7 @@ type VoucherRow = {
   recipient_name: string | null;
   purchaser_name: string | null;
   recipient_email: string | null;
-  valid_until: string;
+  expires_at: string;
 };
 
 async function fetchBytes(url: string): Promise<Uint8Array> {
@@ -127,7 +128,7 @@ export async function generateVoucherPDF(v: VoucherRow): Promise<Uint8Array> {
   // the empty gap toward the QR, but still left of it. ---
   centerText(v.code, 0.44, 0.74, 18, fontBold);
   centerText(`Пакет: ${v.package_name_bg || "—"}`, 0.44, 0.775, 12, fontRegular);
-  centerText(`Валиден до ${formatDateBg(v.valid_until)}`, 0.44, 0.808, 12, fontRegular);
+  centerText(`Валиден до ${formatDateBg(v.expires_at)}`, 0.44, 0.808, 12, fontRegular);
 
   const qrParams = new URLSearchParams({ voucher: v.code });
   if (v.recipient_email) qrParams.set("email", v.recipient_email);
