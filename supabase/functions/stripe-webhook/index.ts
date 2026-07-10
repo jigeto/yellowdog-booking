@@ -117,9 +117,15 @@ Deno.serve(async (req: Request) => {
                   .select("*")
                   .eq("id", voucherId)
                   .maybeSingle();
-                const recipientEmail = voucher?.recipient_email || voucher?.purchaser_email;
-                if (voucher && recipientEmail) {
+
+                if (voucher) {
+                  const recipients = Array.from(
+                    new Set([voucher.purchaser_email, voucher.recipient_email].filter(Boolean))
+                  ) as string[];
+
                   const { subject, html } = voucherConfirmationEmail(voucher);
+
+                  let attachments: { filename: string; content: string }[] | undefined;
                   try {
                     const pdfBytes = await generateVoucherPDF(voucher);
                     let binary = "";
@@ -127,13 +133,13 @@ Deno.serve(async (req: Request) => {
                     for (let i = 0; i < pdfBytes.length; i += chunkSize) {
                       binary += String.fromCharCode(...pdfBytes.subarray(i, i + chunkSize));
                     }
-                    const pdfBase64 = btoa(binary);
-                    await sendEmail(recipientEmail, subject, html, [
-                      { filename: `vaucher-${voucher.code}.pdf`, content: pdfBase64 },
-                    ]);
+                    attachments = [{ filename: `vaucher-${voucher.code}.pdf`, content: btoa(binary) }];
                   } catch (pdfErr) {
                     console.error("[stripe-webhook] voucher PDF generation failed:", pdfErr);
-                    await sendEmail(recipientEmail, subject, html);
+                  }
+
+                  for (const email of recipients) {
+                    await sendEmail(email, subject, html, attachments);
                   }
                 }
               } catch (emailErr) {
