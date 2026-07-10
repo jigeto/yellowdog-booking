@@ -43,9 +43,9 @@ export function BookingWizard() {
     if (searchParams.get('cancelled') === '1') {
       setSearchParams({}, { replace: true });
     }
-    if (searchParams.get('voucher')) {
+    if (searchParams.get('voucher') || searchParams.get('email') || searchParams.get('name')) {
       setSearchParams({}, { replace: true });
-      validateVoucher();
+      if (searchParams.get('voucher')) validateVoucher();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -60,11 +60,13 @@ export function BookingWizard() {
 
   const [form, setForm] = useState<FormData>(() => {
     const voucherFromUrl = searchParams.get('voucher')?.trim().toUpperCase() || '';
+    const emailFromUrl = searchParams.get('email')?.trim() || '';
+    const nameFromUrl = searchParams.get('name')?.trim() || '';
     return {
       packageSlug: '',
       slotId: '',
-      fullName: '',
-      email: '',
+      fullName: nameFromUrl,
+      email: emailFromUrl,
       phone: '',
       petName: '',
       petSpecies: 'dog',
