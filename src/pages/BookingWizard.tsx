@@ -896,7 +896,7 @@ function StepReview({
   const amountDue =
     form.paymentOption === 'full' ? discountedTotal :
     form.paymentOption === 'voucher' && voucherResult ? (
-      voucherResult.kind === 'deposit_waiver' ? 0 :
+      voucherResult.kind === 'deposit_waiver' ? selectedPackage.price_eur :
       voucherResult.kind === 'gift_package' && voucherResult.package_price_eur != null
         ? Math.max(0, selectedPackage.price_eur - voucherResult.package_price_eur)
         : 0
