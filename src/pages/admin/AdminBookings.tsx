@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type Booking } from '../../lib/supabase';
+import { supabase, supabaseUrl, type Booking } from '../../lib/supabase';
 import { classNames, formatEUR, formatDateTime } from '../../lib/utils';
 import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseISO } from 'date-fns';
@@ -125,10 +125,26 @@ export function AdminBookings() {
   const handleRefund = async (booking: Booking) => {
     setActionLoading(true);
     setActionError(null);
-    // Records-only: marks the booking as refunded in our system. The
-    // actual money movement happens manually from the business bank
-    // account (Stripe's processing fee is never returned on a real Stripe
-    // refund, so that path is intentionally not used here).
+    try {
+      const apiUrl = `${supabaseUrl}/functions/v1/refund`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({ booking_id: booking.id }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Stripe refund failed (HTTP ${response.status})`);
+      }
+    } catch (refundErr) {
+      console.error('[handleRefund] Stripe refund call failed:', refundErr);
+      setActionError(`Грешка при връщане през Stripe: ${refundErr instanceof Error ? refundErr.message : 'Unknown error'}`);
+      setActionLoading(false);
+      return;
+    }
     const { error, data } = await supabase.from('bookings').update({ payment_status: 'refunded' }).eq('id', booking.id).select();
     if (error) {
       console.error('[handleRefund] update bookings failed:', error);
@@ -360,7 +376,7 @@ function BookingDetailModal({
             )}
             {(booking.payment_status === 'deposit_paid' || booking.payment_status === 'paid_full') && (
               <button onClick={() => onRefund(booking)} disabled={actionLoading} className="btn-secondary w-full text-sm">
-                <RotateCcw className="w-4 h-4" /> Маркирай като възстановено (парите се връщат ръчно)
+                <RotateCcw className="w-4 h-4" /> Възстанови плащане (през Stripe)
               </button>
             )}
           </div>

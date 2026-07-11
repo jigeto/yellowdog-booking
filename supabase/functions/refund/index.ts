@@ -88,10 +88,6 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const sessions = await stripe.checkout.sessions.list({
-      limit: 1,
-    });
-
     const session = await stripe.checkout.sessions.retrieve(booking.stripe_session_id);
     if (!session.payment_intent) {
       return new Response(
@@ -105,24 +101,40 @@ Deno.serve(async (req: Request) => {
       reason: "requested_by_customer",
     });
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from("bookings")
-      .update({
-        payment_status: "refunded",
-        updated_at: new Date().toISOString(),
-      })
+      .update({ payment_status: "refunded" })
       .eq("id", booking_id);
 
-    await supabase
-      .from("payments")
-      .insert({
-        booking_id: booking_id,
-        stripe_session_id: booking.stripe_session_id,
-        stripe_payment_id: refund.id,
-        amount_eur: -booking.amount_paid_eur,
-        type: "refund",
-        status: "completed",
-      });
+    if (updateErr) {
+      // The Stripe refund already succeeded at this point — surface this
+      // clearly rather than letting it look like the whole refund failed.
+      console.error("[refund] Stripe refund succeeded but DB update failed:", updateErr);
+      return new Response(
+        JSON.stringify({
+          error: `Refund processed in Stripe (${refund.id}) but failed to update booking status: ${updateErr.message}`,
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    try {
+      const { error: paymentsErr } = await supabase
+        .from("payments")
+        .insert({
+          booking_id: booking_id,
+          stripe_session_id: booking.stripe_session_id,
+          stripe_payment_id: refund.id,
+          amount_eur: -booking.amount_paid_eur,
+          type: "refund",
+          status: "completed",
+        });
+      if (paymentsErr) {
+        console.error("[refund] payments audit log insert failed (non-fatal):", paymentsErr);
+      }
+    } catch (auditErr) {
+      console.error("[refund] payments audit log insert threw (non-fatal):", auditErr);
+    }
 
     return new Response(
       JSON.stringify({ success: true, refund_id: refund.id }),
