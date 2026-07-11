@@ -203,13 +203,29 @@ type VoucherRow = {
   expires_at: string | null;
 };
 
-export function voucherConfirmationEmail(v: VoucherRow): { subject: string; html: string } {
-  const toName = v.recipient_name || v.purchaser_name || "";
+export function voucherConfirmationEmail(
+  v: VoucherRow,
+  audience: "purchaser" | "recipient" = "recipient"
+): { subject: string; html: string } {
+  const isGift = !!(v.purchaser_name && v.recipient_name && v.purchaser_name !== v.recipient_name);
   const expiresStr = v.expires_at ? formatDateBg(v.expires_at) : "—";
+
+  let greetingName: string;
+  let greetingLine: string;
+  if (audience === "purchaser" && isGift) {
+    greetingName = v.purchaser_name!;
+    greetingLine = `вие подарихте ваучер на ${v.recipient_name}.`;
+  } else if (isGift) {
+    greetingName = v.recipient_name!;
+    greetingLine = `${v.purchaser_name} ви подари фотосесия!`;
+  } else {
+    greetingName = v.recipient_name || v.purchaser_name || "";
+    greetingLine = "заповядайте вашият ваучер за фотосесия!";
+  }
 
   const html = wrapper(`
     <h1 style="font-size:22px; color:${BRAND_INK}; margin:0 0 4px;">🎁 Подаръчен ваучер</h1>
-    <p style="color:#555; margin:0 0 20px;">Здравейте, ${toName} — ${v.purchaser_name && v.recipient_name ? `${v.purchaser_name} ви подари фотосесия!` : "заповядайте вашият ваучер за фотосесия!"}</p>
+    <p style="color:#555; margin:0 0 20px;">Здравейте, ${greetingName} — ${greetingLine}</p>
 
     <div style="border:2px dashed ${BRAND_YELLOW}; border-radius:12px; padding:18px; text-align:center; margin-bottom:20px;">
       <p style="margin:0 0 4px; color:#999; font-size:12px; text-transform:uppercase;">Код на ваучера</p>

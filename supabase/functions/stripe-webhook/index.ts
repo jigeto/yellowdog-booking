@@ -123,8 +123,6 @@ Deno.serve(async (req: Request) => {
                     new Set([voucher.purchaser_email, voucher.recipient_email].filter(Boolean))
                   ) as string[];
 
-                  const { subject, html } = voucherConfirmationEmail(voucher);
-
                   let attachments: { filename: string; content: string }[] | undefined;
                   try {
                     const pdfBytes = await generateVoucherPDF(voucher);
@@ -139,6 +137,8 @@ Deno.serve(async (req: Request) => {
                   }
 
                   for (const email of recipients) {
+                    const audience = email === voucher.purchaser_email ? "purchaser" : "recipient";
+                    const { subject, html } = voucherConfirmationEmail(voucher, audience);
                     await sendEmail(email, subject, html, attachments);
                   }
                 }
