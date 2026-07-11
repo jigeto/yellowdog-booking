@@ -9,6 +9,7 @@ import { AdminCalendar } from './pages/admin/AdminCalendar';
 import { AdminBookings } from './pages/admin/AdminBookings';
 import { AdminSlots } from './pages/admin/AdminSlots';
 import { AdminVouchers } from './pages/admin/AdminVouchers';
+import { AdminPackages } from './pages/admin/AdminPackages';
 import { AdminCustomers } from './pages/admin/AdminCustomers';
 import { AdminFinances } from './pages/admin/AdminFinances';
 import { PublicHeader } from './components/PublicHeader';
@@ -38,6 +39,7 @@ function App() {
           <Route path="bookings" element={<AdminBookings />} />
           <Route path="slots" element={<AdminSlots />} />
           <Route path="vouchers" element={<AdminVouchers />} />
+          <Route path="packages" element={<AdminPackages />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="finances" element={<AdminFinances />} />
         </Route>

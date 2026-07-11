@@ -117,7 +117,7 @@ export function VoucherPage() {
             <div className="grid grid-cols-1 gap-3">
               {packages.map((pkg) => {
                 const isSelected = selectedSlug === pkg.slug;
-                const isPopular = pkg.slug === 'art';
+                const isPopular = pkg.featured;
                 return (
                   <button
                     key={pkg.slug}

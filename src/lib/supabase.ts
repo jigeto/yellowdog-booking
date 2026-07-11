@@ -11,6 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export type Package = {
+  id: string;
   slug: string;
   name_bg: string;
   description_bg: string | null;
@@ -20,6 +21,7 @@ export type Package = {
   duration_minutes: number;
   features: string[] | null;
   active: boolean;
+  featured: boolean;
   sort_order: number;
 };
 

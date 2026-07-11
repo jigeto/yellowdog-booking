@@ -1,7 +1,7 @@
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../lib/auth';
 import { Logo } from '../../components/Logo';
-import { Calendar, BookOpen, Clock, Gift, Users, DollarSign, LogOut, Loader2, Menu, X } from 'lucide-react';
+import { Calendar, BookOpen, Clock, Gift, Users, DollarSign, LogOut, Loader2, Menu, X, Camera } from 'lucide-react';
 import { useState } from 'react';
 import { classNames } from '../../lib/utils';
 
@@ -9,6 +9,7 @@ const NAV = [
   { to: '/admin', label: 'Календар', icon: Calendar, end: true },
   { to: '/admin/bookings', label: 'Резервации', icon: BookOpen, end: false },
   { to: '/admin/slots', label: 'Часове', icon: Clock, end: false },
+  { to: '/admin/packages', label: 'Пакети', icon: Camera, end: false },
   { to: '/admin/vouchers', label: 'Ваучери', icon: Gift, end: false },
   { to: '/admin/customers', label: 'Клиенти', icon: Users, end: false },
   { to: '/admin/finances', label: 'Финанси', icon: DollarSign, end: false },

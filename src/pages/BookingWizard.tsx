@@ -371,7 +371,7 @@ function StepPackage({ packages, selected, onSelect }: { packages: Package[]; se
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {packages.map((pkg) => {
           const isSelected = selected === pkg.slug;
-          const isPopular = pkg.slug === 'art';
+          const isPopular = pkg.featured;
           return (
             <button
               key={pkg.slug}
