@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type TimeSlot, type Booking, type Package } from '../../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey, type TimeSlot, type Booking, type Package } from '../../lib/supabase';
 import { classNames, formatTime, formatEUR } from '../../lib/utils';
 import { ChevronLeft, ChevronRight, Plus, Ban, X, Loader2, Calendar as CalIcon, Clock, UserPlus, CalendarClock, Unlock, AlertCircle } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, startOfDay, endOfDay } from 'date-fns';
@@ -684,6 +684,16 @@ function ManualBookingModal({ onClose, onCreated }: { onClose: () => void; onCre
 
     const result = data as { booking_id: string; reference: string };
     setSuccess({ reference: result.reference });
+
+    // Manual bookings never go through Stripe/the booking wizard, so no
+    // confirmation email was ever sent for them — fire it now, the same
+    // way the online booking wizard does for instant-confirm bookings.
+    fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+      body: JSON.stringify({ booking_reference: result.reference }),
+    }).catch((e) => console.error('[send-confirmation-email] failed:', e));
+
     setSubmitting(false);
     onCreated();
   };
@@ -780,12 +790,24 @@ function SlotDetailModal({ slot, booking, onClose, onUpdated }: { slot: TimeSlot
     setSubmitting(true);
     setError(null);
     if (booking) {
-      const update: Record<string, unknown> = { status: newStatus, updated_at: new Date().toISOString() };
-      if (newStatus === 'cancelled') update.note = cancelReason;
-      await supabase.from('bookings').update(update).eq('id', booking.id);
+      const update: Record<string, unknown> = { status: newStatus };
+      if (newStatus === 'cancelled') update.admin_note = cancelReason;
+      const { error: updateErr } = await supabase.from('bookings').update(update).eq('id', booking.id);
+      if (updateErr) {
+        console.error('[SlotDetailModal] update bookings failed:', updateErr);
+        setError(updateErr.message);
+        setSubmitting(false);
+        return;
+      }
     }
     if (newStatus === 'cancelled' && slot.status === 'booked') {
-      await supabase.from('time_slots').update({ status: 'available' }).eq('id', slot.id);
+      const { error: slotErr } = await supabase.from('time_slots').update({ status: 'available' }).eq('id', slot.id);
+      if (slotErr) {
+        console.error('[SlotDetailModal] update time_slots failed:', slotErr);
+        setError(slotErr.message);
+        setSubmitting(false);
+        return;
+      }
     }
     setSubmitting(false);
     onUpdated();
