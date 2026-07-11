@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseAnonKey, type Package, type TimeSlot, type Settings, type ValidateVoucherResult } from '../lib/supabase';
 import { loadSettings, formatEUR, formatTime, classNames } from '../lib/utils';
 import { Check, ChevronLeft, ChevronRight, Calendar, Clock, User, CreditCard, CheckCircle, Sparkles, Album, Camera, AlertCircle, Loader2, Dog, Cat, PawPrint, X } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, startOfWeek, endOfWeek, startOfDay } from 'date-fns';
 import { bg } from 'date-fns/locale';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -442,14 +442,14 @@ function StepSlot({ slots, selected, onSelect, minLeadHours }: { slots: TimeSlot
   const slotsByDate = useMemo(() => {
     const map: Record<string, TimeSlot[]> = {};
     slots
-      .filter((slot) => slot.status === 'available')
+      .filter((slot) => slot.status === 'available' && parseISO(slot.starts_at) >= minDate)
       .forEach((slot) => {
       const dateKey = format(parseISO(slot.starts_at), 'yyyy-MM-dd');
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(slot);
     });
     return map;
-  }, [slots]);
+  }, [slots, minDate]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -488,7 +488,7 @@ function StepSlot({ slots, selected, onSelect, minLeadHours }: { slots: TimeSlot
               const dateKey = format(day, 'yyyy-MM-dd');
               const daySlots = slotsByDate[dateKey] || [];
               const hasSlots = daySlots.length > 0;
-              const isPast = day < minDate;
+              const isPast = day < startOfDay(new Date());
               const inMonth = isSameMonth(day, currentMonth);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
 
