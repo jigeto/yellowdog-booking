@@ -149,7 +149,12 @@ export function AdminBookings() {
       setActionLoading(false);
       return;
     }
-    const { error, data } = await supabase.from('bookings').update({ payment_status: 'refunded' }).eq('id', booking.id).select();
+    const shouldCancel = booking.status !== 'completed';
+    const { error, data } = await supabase
+      .from('bookings')
+      .update(shouldCancel ? { payment_status: 'refunded', status: 'cancelled' } : { payment_status: 'refunded' })
+      .eq('id', booking.id)
+      .select();
     if (error) {
       console.error('[handleRefund] update bookings failed:', error);
       setActionError(`Грешка: ${error.message}`);
@@ -161,6 +166,16 @@ export function AdminBookings() {
       setActionError('Възстановяването не мина — заявката не засегна нито един ред (вероятно RLS).');
       setActionLoading(false);
       return;
+    }
+    if (shouldCancel && booking.slot_id) {
+      const { error: slotErr } = await supabase.from('time_slots').update({ status: 'available' }).eq('id', booking.slot_id);
+      if (slotErr) {
+        console.error('[handleRefund] update time_slots failed:', slotErr);
+        setActionError(`Парите са върнати, но часът не се освободи: ${slotErr.message}`);
+        setActionLoading(false);
+        load();
+        return;
+      }
     }
     setActionLoading(false);
     setSelectedBooking(null);
