@@ -6,6 +6,10 @@ import { parseISO } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { format } from 'date-fns';
 
+// Not real security — the admin panel is already behind login. This is
+// just a speed bump so no one triggers a real Stripe refund by accident.
+const REFUND_PIN = '1123';
+
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакащ',
   confirmed: 'Потвърден',
@@ -288,6 +292,21 @@ function BookingDetailModal({
   actionLoading: boolean;
   actionError: string | null;
 }) {
+  const [showRefundPin, setShowRefundPin] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const confirmRefund = () => {
+    if (pinInput !== REFUND_PIN) {
+      setPinError('Грешен PIN.');
+      return;
+    }
+    setPinError(null);
+    setShowRefundPin(false);
+    setPinInput('');
+    onRefund(booking);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-ink-800/50 backdrop-blur-sm" onClick={onClose} />
@@ -375,9 +394,29 @@ function BookingDetailModal({
               </button>
             )}
             {(booking.payment_status === 'deposit_paid' || booking.payment_status === 'paid_full') && (
-              <button onClick={() => onRefund(booking)} disabled={actionLoading} className="btn-secondary w-full text-sm">
-                <RotateCcw className="w-4 h-4" /> Възстанови плащане (през Stripe)
-              </button>
+              showRefundPin ? (
+                <div className="p-3 rounded-xl bg-error-50 border border-error-200 space-y-2">
+                  <p className="text-sm text-ink-700">Въведи PIN, за да потвърдиш реално връщане на пари през Stripe:</p>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    value={pinInput}
+                    onChange={(e) => { setPinInput(e.target.value); setPinError(null); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') confirmRefund(); }}
+                    className="input-field"
+                    autoFocus
+                  />
+                  {pinError && <p className="text-sm text-error-600">{pinError}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => { setShowRefundPin(false); setPinInput(''); setPinError(null); }} className="btn-secondary flex-1 text-sm">Отказ</button>
+                    <button onClick={confirmRefund} disabled={actionLoading} className="btn-primary flex-1 text-sm">Потвърди връщането</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setShowRefundPin(true)} disabled={actionLoading} className="btn-secondary w-full text-sm">
+                  <RotateCcw className="w-4 h-4" /> Възстанови плащане (през Stripe)
+                </button>
+              )
             )}
           </div>
         </div>

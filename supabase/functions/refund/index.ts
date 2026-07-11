@@ -36,7 +36,16 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const { data: isAdmin } = await supabase.rpc("is_admin");
+    // is_admin() checks auth.uid() internally — calling it through the
+    // service-role client above carries no user JWT, so auth.uid() would
+    // resolve to nothing and this always failed for real admins too. Use a
+    // client that actually carries this user's token instead.
+    const supabaseAsUser = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: isAdmin } = await supabaseAsUser.rpc("is_admin");
     if (!isAdmin) {
       return new Response(
         JSON.stringify({ error: "Forbidden — admin access required" }),
