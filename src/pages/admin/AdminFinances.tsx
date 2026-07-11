@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { supabase, type Booking } from '../../lib/supabase';
-import { formatEUR, formatDate } from '../../lib/utils';
+import { formatEUR, formatDate, classNames } from '../../lib/utils';
 import { Loader2, Download, TrendingUp, Camera, CreditCard, BarChart2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, LineChart, Line } from 'recharts';
 import { format, parseISO, subMonths, isSameMonth } from 'date-fns';
@@ -12,39 +12,73 @@ const PACKAGE_COLORS: Record<string, string> = {
   premium: '#C08D00',
 };
 
+type VoucherRow = {
+  id: string;
+  code: string;
+  amount_eur: number;
+  status: string;
+  created_at: string;
+  package_name_bg: string | null;
+  purchaser_name: string | null;
+};
+
 export function AdminFinances() {
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('booking_admin_view')
-        .select('*')
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false });
+      const [bookingsRes, vouchersRes] = await Promise.all([
+        supabase.from('booking_admin_view').select('*').neq('status', 'cancelled').order('created_at', { ascending: false }),
+        supabase.from('voucher_admin_view').select('*').order('created_at', { ascending: false }),
+      ]);
 
-      setBookings((data || []) as Booking[]);
+      setBookings((bookingsRes.data || []) as Booking[]);
+      setVouchers((vouchersRes.data || []) as VoucherRow[]);
       setLoading(false);
     })();
   }, []);
 
   const now = new Date();
 
+  // Only vouchers that were actually paid for count as revenue — 'active'
+  // (unredeemed but paid) or 'redeemed' (paid and used). 'pending_payment'
+  // (abandoned checkout) and 'cancelled' never collected real money.
+  const paidVouchers = useMemo(
+    () => vouchers.filter(v => v.status === 'active' || v.status === 'redeemed'),
+    [vouchers]
+  );
+
   const thisMonthBookings = useMemo(
     () => bookings.filter(b => isSameMonth(parseISO(b.created_at), now)),
     [bookings]
   );
 
-  const thisMonthRevenue = useMemo(
+  const thisMonthVouchers = useMemo(
+    () => paidVouchers.filter(v => isSameMonth(parseISO(v.created_at), now)),
+    [paidVouchers]
+  );
+
+  const thisMonthBookingRevenue = useMemo(
     () => thisMonthBookings.reduce((s, b) => s + b.amount_paid_eur, 0),
     [thisMonthBookings]
   );
 
+  const thisMonthVoucherRevenue = useMemo(
+    () => thisMonthVouchers.reduce((s, v) => s + v.amount_eur, 0),
+    [thisMonthVouchers]
+  );
+
+  const thisMonthRevenue = thisMonthBookingRevenue + thisMonthVoucherRevenue;
+
+  // Average session value stays booking-only (voucher purchases aren't
+  // sessions), otherwise it gets skewed by voucher money that isn't tied
+  // to a photoshoot that happened this month.
   const avgValue = useMemo(
-    () => thisMonthBookings.length ? thisMonthRevenue / thisMonthBookings.length : 0,
-    [thisMonthBookings, thisMonthRevenue]
+    () => thisMonthBookings.length ? thisMonthBookingRevenue / thisMonthBookings.length : 0,
+    [thisMonthBookings, thisMonthBookingRevenue]
   );
 
   const monthlyData = useMemo(() => {
@@ -52,14 +86,49 @@ export function AdminFinances() {
     for (let i = 11; i >= 0; i--) {
       const month = subMonths(now, i);
       const monthBookings = bookings.filter(b => isSameMonth(parseISO(b.created_at), month));
+      const monthVouchers = paidVouchers.filter(v => isSameMonth(parseISO(v.created_at), month));
       months.push({
         month: format(month, 'MMM', { locale: bg }),
-        revenue: monthBookings.reduce((s, b) => s + b.amount_paid_eur, 0),
+        revenue: monthBookings.reduce((s, b) => s + b.amount_paid_eur, 0) + monthVouchers.reduce((s, v) => s + v.amount_eur, 0),
         count: monthBookings.length,
       });
     }
     return months;
-  }, [bookings]);
+  }, [bookings, paidVouchers]);
+
+  type Txn = {
+    key: string;
+    reference: string;
+    date: string;
+    label: string;
+    amount: number;
+    mode: string;
+    kind: 'booking' | 'voucher';
+  };
+
+  const allTransactions = useMemo<Txn[]>(() => {
+    const bookingTxns: Txn[] = bookings.map((b) => ({
+      key: `b-${b.id}`,
+      reference: b.reference,
+      date: b.created_at,
+      label: b.package_slug,
+      amount: b.amount_paid_eur,
+      mode: b.payment_mode || '—',
+      kind: 'booking',
+    }));
+    const voucherTxns: Txn[] = paidVouchers.map((v) => ({
+      key: `v-${v.id}`,
+      reference: v.code,
+      date: v.created_at,
+      label: v.package_name_bg || '—',
+      amount: v.amount_eur,
+      mode: 'ваучер (покупка)',
+      kind: 'voucher',
+    }));
+    return [...bookingTxns, ...voucherTxns].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  }, [bookings, paidVouchers]);
 
   const packageData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -80,16 +149,14 @@ export function AdminFinances() {
   }, [bookings]);
 
   const handleExport = () => {
-    const headers = ['Референция', 'Дата', 'Пакет', 'Статус', 'Плащане', 'Дължимо', 'Платено', 'Любимец'];
-    const rows = bookings.map(b => [
-      b.reference,
-      b.starts_at ? format(parseISO(b.starts_at), 'd.MM.yyyy HH:mm') : formatDate(b.created_at, 'd.MM.yyyy'),
-      b.package_slug,
-      b.status,
-      b.payment_status,
-      b.amount_due_eur.toString(),
-      b.amount_paid_eur.toString(),
-      b.pet_name || '',
+    const headers = ['Тип', 'Референция', 'Дата', 'Пакет', 'Режим', 'Сума'];
+    const rows = allTransactions.map(t => [
+      t.kind === 'booking' ? 'Резервация' : 'Ваучер (покупка)',
+      t.reference,
+      formatDate(t.date, 'd.MM.yyyy HH:mm'),
+      t.label,
+      t.mode,
+      t.amount.toString(),
     ]);
     const csv = '\ufeff' + [headers, ...rows]
       .map(r => r.map(v => `"${String(v ?? '')}"`).join(','))
@@ -135,6 +202,9 @@ export function AdminFinances() {
           </div>
           <p className="font-serif text-3xl text-ink-800 mb-1">{formatEUR(thisMonthRevenue)}</p>
           <p className="text-sm text-ink-500">Приходи {format(now, 'MMMM', { locale: bg })}</p>
+          {thisMonthVoucherRevenue > 0 && (
+            <p className="text-xs text-ink-400 mt-1">вкл. {formatEUR(thisMonthVoucherRevenue)} от ваучери</p>
+          )}
         </div>
         <div className="card p-5">
           <div className="flex items-start justify-between mb-3">
@@ -227,7 +297,7 @@ export function AdminFinances() {
       {/* Recent transactions */}
       <div className="card p-5 mt-6">
         <h2 className="font-serif text-xl text-ink-800 mb-4">Последни транзакции</h2>
-        {bookings.length === 0 ? (
+        {allTransactions.length === 0 ? (
           <div className="text-center py-8">
             <BarChart2 className="w-12 h-12 text-ink-200 mx-auto mb-3" />
             <p className="text-ink-400">Няма данни</p>
@@ -237,21 +307,27 @@ export function AdminFinances() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-ink-100 text-left text-xs text-ink-400 uppercase tracking-wider">
+                  <th className="pb-2 pr-4 font-medium">Тип</th>
                   <th className="pb-2 pr-4 font-medium">Референция</th>
                   <th className="pb-2 pr-4 font-medium">Дата</th>
                   <th className="pb-2 pr-4 font-medium">Пакет</th>
-                  <th className="pb-2 pr-4 font-medium">Платено</th>
+                  <th className="pb-2 pr-4 font-medium">Сума</th>
                   <th className="pb-2 font-medium">Режим</th>
                 </tr>
               </thead>
               <tbody>
-                {bookings.slice(0, 20).map((b) => (
-                  <tr key={b.id} className="border-b border-ink-50 text-sm">
-                    <td className="py-2 pr-4 font-mono text-ink-800">{b.reference}</td>
-                    <td className="py-2 pr-4 text-ink-600">{formatDate(b.created_at, 'd MMM yyyy')}</td>
-                    <td className="py-2 pr-4 text-ink-600 capitalize">{b.package_slug}</td>
-                    <td className="py-2 pr-4 font-medium text-ink-800">{formatEUR(b.amount_paid_eur)}</td>
-                    <td className="py-2 text-ink-600">{b.payment_mode || '—'}</td>
+                {allTransactions.slice(0, 20).map((t) => (
+                  <tr key={t.key} className="border-b border-ink-50 text-sm">
+                    <td className="py-2 pr-4">
+                      <span className={classNames('px-2 py-0.5 rounded-full text-xs font-medium', t.kind === 'voucher' ? 'bg-yellow-100 text-yellow-700' : 'bg-ink-100 text-ink-600')}>
+                        {t.kind === 'voucher' ? 'Ваучер' : 'Резервация'}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-4 font-mono text-ink-800">{t.reference}</td>
+                    <td className="py-2 pr-4 text-ink-600">{formatDate(t.date, 'd MMM yyyy')}</td>
+                    <td className="py-2 pr-4 text-ink-600 capitalize">{t.label}</td>
+                    <td className="py-2 pr-4 font-medium text-ink-800">{formatEUR(t.amount)}</td>
+                    <td className="py-2 text-ink-600">{t.mode}</td>
                   </tr>
                 ))}
               </tbody>
