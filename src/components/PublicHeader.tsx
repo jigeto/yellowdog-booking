@@ -28,12 +28,6 @@ export function PublicHeader() {
             <Gift className="w-4 h-4 inline sm:hidden" />
             <span className="hidden sm:inline">Ваучер</span>
           </Link>
-          <Link
-            to="/admin"
-            className="px-3 sm:px-4 py-2 rounded-lg text-sm font-medium text-ink-500 hover:text-ink-700 hover:bg-ink-50 transition-colors"
-          >
-            Админ
-          </Link>
         </nav>
       </div>
     </header>
