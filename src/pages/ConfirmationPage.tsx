@@ -193,7 +193,8 @@ export function ConfirmationPage() {
 
       {/* Contact */}
       <div className="card p-6 sm:p-8 mb-6 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        <h2 className="font-serif text-xl text-ink-800 mb-4">Имате въпроси?</h2>
+        <h2 className="font-serif text-xl text-ink-800 mb-1">Имате въпроси?</h2>
+        <p className="text-sm text-ink-500 mb-4">Не се колебайте да се свържете с нас.</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {settings.studio_phone && (
             <a href={`tel:${settings.studio_phone}`} className="flex items-center gap-3 p-3 rounded-xl bg-cream-50 hover:bg-yellow-50 transition-colors">

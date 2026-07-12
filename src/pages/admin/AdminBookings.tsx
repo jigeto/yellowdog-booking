@@ -284,6 +284,7 @@ export function AdminBookings() {
           onClose={() => { setSelectedBooking(null); setActionError(null); }}
           onAction={handleAction}
           onRefund={handleRefund}
+          onNoteSaved={load}
           actionLoading={actionLoading}
           actionError={actionError}
         />
@@ -297,6 +298,7 @@ function BookingDetailModal({
   onClose,
   onAction,
   onRefund,
+  onNoteSaved,
   actionLoading,
   actionError,
 }: {
@@ -304,12 +306,32 @@ function BookingDetailModal({
   onClose: () => void;
   onAction: (b: Booking, a: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => void;
   onRefund: (b: Booking) => void;
+  onNoteSaved: () => void;
   actionLoading: boolean;
   actionError: string | null;
 }) {
   const [showRefundPin, setShowRefundPin] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState<string | null>(null);
+  const [adminNote, setAdminNote] = useState(booking.admin_note || '');
+  const [savingNote, setSavingNote] = useState(false);
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [noteError, setNoteError] = useState<string | null>(null);
+
+  const saveNote = async () => {
+    setSavingNote(true);
+    setNoteError(null);
+    setNoteSaved(false);
+    const { error } = await supabase.from('bookings').update({ admin_note: adminNote || null }).eq('id', booking.id);
+    setSavingNote(false);
+    if (error) {
+      console.error('[saveNote] failed:', error);
+      setNoteError(error.message);
+      return;
+    }
+    setNoteSaved(true);
+    onNoteSaved();
+  };
 
   const confirmRefund = () => {
     if (pinInput !== REFUND_PIN) {
@@ -371,10 +393,28 @@ function BookingDetailModal({
 
           {booking.note && (
             <div className="p-3 rounded-xl bg-cream-50">
-              <p className="text-xs text-ink-400 uppercase mb-1">Бележка</p>
+              <p className="text-xs text-ink-400 uppercase mb-1">Бележка от клиента</p>
               <p className="text-sm text-ink-700">{booking.note}</p>
             </div>
           )}
+
+          <div>
+            <label className="label">Бележки за сесията (вижда се само от студиото)</label>
+            <textarea
+              value={adminNote}
+              onChange={(e) => { setAdminNote(e.target.value); setNoteSaved(false); }}
+              className="input-field"
+              rows={3}
+              placeholder="напр. предпочитания на клиента, особености на любимеца, договорки на място..."
+            />
+            <div className="flex items-center gap-3 mt-2">
+              <button onClick={saveNote} disabled={savingNote} className="btn-secondary text-sm">
+                {savingNote ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Запази бележка'}
+              </button>
+              {noteSaved && <span className="text-sm text-success-600">Запазено ✓</span>}
+              {noteError && <span className="text-sm text-error-600">{noteError}</span>}
+            </div>
+          </div>
 
           {booking.voucher_code && (
             <div className="p-3 rounded-xl bg-yellow-50 border border-yellow-200">
