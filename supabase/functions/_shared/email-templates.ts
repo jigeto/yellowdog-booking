@@ -5,7 +5,7 @@
 const BRAND_YELLOW = "#F5B400";
 const BRAND_INK = "#1A1A17";
 const LOGO_URL = "https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png";
-const STUDIO_ADDRESS = "бул. „Владимир Вазов“ 90, София";
+const STUDIO_ADDRESS = "бул. „Владимир Вазов“ 90, вх. Б, ет. 2, София";
 const STUDIO_PHONE = "+359 876 822 686";
 const STUDIO_EMAIL = "office@yellowdog.bg";
 
@@ -100,7 +100,7 @@ export function bookingConfirmationEmail(b: BookingRow): { subject: string; html
     </div>
 
     <p style="color:#555; line-height:1.6;">Адрес на студиото: <strong>${STUDIO_ADDRESS}</strong>.<br/>
-    Ще ви пратим и напомняне ден преди фотосесията. Ако имате въпроси или искате да промените часа, пишете ни на ${STUDIO_EMAIL} или се обадете на ${STUDIO_PHONE}.</p>
+    Ще ви пратим и напомняне ден преди фотосесията. Ако имате въпроси или ви се налага да промените часа, се обадете на ${STUDIO_PHONE}.</p>
 
     <p style="color:#555; line-height:1.6;">Как да се подготвите за фотосесията може да прочетете <a href="${STUDIO_PREP_URL}" style="color:#B8860B;">на този линк</a>.</p>
 
@@ -187,7 +187,7 @@ export function bookingReminderEmail(b: BookingRow): { subject: string; html: st
     ${dueLine ? `<div style="background:#FFF8E5; border-radius:10px; padding:14px 16px; margin-bottom:20px;">${dueLine}</div>` : ""}
 
     <p style="color:#555; line-height:1.6;">Няколко съвета: елате няколко минути по-рано, вземете любима играчка/лакомство на ${b.pet_name || "любимеца"}, и не се притеснявайте — при нас фотосесиите са без стрес, с игра и почивки, колкото са нужни.</p>
-    <p style="color:#555;">До утре! Ако нещо се промени, пишете ни на ${STUDIO_EMAIL} или се обадете на ${STUDIO_PHONE}.</p>
+    <p style="color:#555;">До утре! Ако нещо се промени, обадете ни се на ${STUDIO_PHONE}.</p>
   `);
 
   return { subject: `Напомняне: утре е фотосесията ви (${b.reference})`, html };

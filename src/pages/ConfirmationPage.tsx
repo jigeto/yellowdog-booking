@@ -178,14 +178,14 @@ export function ConfirmationPage() {
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-yellow-400 text-ink-800 text-sm font-semibold flex items-center justify-center">2</span>
             <div>
               <p className="font-medium text-ink-800">Подготовка</p>
-              <p className="text-sm text-ink-500">Донесете любимеца си спокойствен и с любимите играчки. Ние ще се погрижим за останалото.</p>
+              <p className="text-sm text-ink-500">Доведете любимеца си спокоен и отпочинал. Ние ще се погрижим за останалото.</p>
             </div>
           </li>
           <li className="flex gap-3">
             <span className="flex-shrink-0 w-7 h-7 rounded-full bg-yellow-400 text-ink-800 text-sm font-semibold flex items-center justify-center">3</span>
             <div>
               <p className="font-medium text-ink-800">Фотосесия</p>
-              <p className="text-sm text-ink-500">Очакваме ви в студиото 5 минути преди часа. Ако закъснеете, моля, обадете ни се.</p>
+              <p className="text-sm text-ink-500">Очакваме ви в студиото 5 минути преди часа. Ако закъснявате, моля, обадете ни се.</p>
             </div>
           </li>
         </ol>
