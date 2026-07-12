@@ -140,7 +140,9 @@ Deno.serve(async (req: Request) => {
       }
       const code = "YD-" + codeSuffix;
       const validMonths = 6;
-      const validUntil = new Date(Date.now() + validMonths * 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const validUntilDate = new Date();
+      validUntilDate.setMonth(validUntilDate.getMonth() + validMonths);
+      const validUntil = validUntilDate.toISOString().slice(0, 10);
 
       const { data: voucher, error: vError } = await supabase
         .from("vouchers")
