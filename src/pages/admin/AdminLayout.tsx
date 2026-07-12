@@ -4,6 +4,8 @@ import { Logo } from '../../components/Logo';
 import { Calendar, BookOpen, Clock, Gift, Users, DollarSign, LogOut, Loader2, Menu, X, Camera } from 'lucide-react';
 import { useState } from 'react';
 import { classNames } from '../../lib/utils';
+import { MfaEnroll } from './MfaEnroll';
+import { MfaChallenge } from './MfaChallenge';
 
 const NAV = [
   { to: '/admin', label: 'Календар', icon: Calendar, end: true },
@@ -16,11 +18,11 @@ const NAV = [
 ];
 
 export function AdminLayout() {
-  const { session, isAdmin, loading, signOut } = useAuth();
+  const { session, isAdmin, loading, mfaStatus, signOut } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  if (loading) {
+  if (loading || (session && isAdmin && mfaStatus === 'checking')) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-ink-50">
         <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
@@ -30,6 +32,14 @@ export function AdminLayout() {
 
   if (!session || !isAdmin) {
     return <Navigate to="/admin/login" replace />;
+  }
+
+  if (mfaStatus === 'unenrolled') {
+    return <MfaEnroll />;
+  }
+
+  if (mfaStatus === 'needs_challenge') {
+    return <MfaChallenge />;
   }
 
   const handleSignOut = async () => {

@@ -2,11 +2,15 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
+export type MfaStatus = 'checking' | 'unenrolled' | 'needs_challenge' | 'verified';
+
 type AuthContextType = {
   session: Session | null;
   user: User | null;
   isAdmin: boolean;
   loading: boolean;
+  mfaStatus: MfaStatus;
+  refreshMfaStatus: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 };
@@ -16,15 +20,35 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isAdmin: false,
   loading: true,
+  mfaStatus: 'checking',
+  refreshMfaStatus: async () => {},
   signIn: async () => ({ error: 'not implemented' }),
   signOut: async () => {},
 });
+
+async function computeMfaStatus(): Promise<MfaStatus> {
+  const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalError || !aalData) return 'unenrolled';
+
+  if (aalData.currentLevel === 'aal2') {
+    return 'verified';
+  }
+
+  const { data: factorsData } = await supabase.auth.mfa.listFactors();
+  const hasVerifiedTotp = !!factorsData?.totp?.some((f) => f.status === 'verified');
+  return hasVerifiedTotp ? 'needs_challenge' : 'unenrolled';
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mfaStatus, setMfaStatus] = useState<MfaStatus>('checking');
+
+  const refreshMfaStatus = async () => {
+    setMfaStatus(await computeMfaStatus());
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         (async () => {
           const { data } = await supabase.rpc('is_admin');
           setIsAdmin(!!data);
+          setMfaStatus(await computeMfaStatus());
           setLoading(false);
         })();
       } else {
@@ -48,8 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           const { data } = await supabase.rpc('is_admin');
           setIsAdmin(!!data);
+          setMfaStatus(await computeMfaStatus());
         } else {
           setIsAdmin(false);
+          setMfaStatus('checking');
         }
         setLoading(false);
       })();
@@ -76,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, isAdmin, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ session, user, isAdmin, loading, mfaStatus, refreshMfaStatus, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
