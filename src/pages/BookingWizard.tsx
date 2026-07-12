@@ -23,14 +23,6 @@ type FormData = {
   marketingConsent: boolean;
   paymentOption: 'deposit' | 'full' | 'voucher';
   voucherCode: string;
-  imageConsentGiven: boolean;
-  imageConsentCategories: string[];
-  imageConsentOther: string;
-  childPresent: boolean;
-  childName: string;
-  childConsentGiven: boolean;
-  childConsentCategories: string[];
-  childConsentOther: string;
 };
 
 const STEPS = [
@@ -85,14 +77,6 @@ export function BookingWizard() {
       marketingConsent: false,
       paymentOption: voucherFromUrl ? 'voucher' : 'deposit',
       voucherCode: voucherFromUrl,
-      imageConsentGiven: false,
-      imageConsentCategories: [],
-      imageConsentOther: '',
-      childPresent: false,
-      childName: '',
-      childConsentGiven: false,
-      childConsentCategories: [],
-      childConsentOther: '',
     };
   });
 
@@ -200,26 +184,6 @@ export function BookingWizard() {
     }
 
     const result = data as { booking_id: string; reference: string; amount_due_eur: number; payment_mode: string };
-
-    if (form.imageConsentGiven || form.childPresent) {
-      supabase.from('image_consents').insert({
-        booking_id: result.booking_id,
-        adult_consent_given: form.imageConsentGiven,
-        adult_full_name: form.fullName,
-        adult_contact: form.email,
-        adult_categories: form.imageConsentGiven ? form.imageConsentCategories : null,
-        adult_other_text: form.imageConsentCategories.includes('other') ? form.imageConsentOther : null,
-        child_present: form.childPresent,
-        child_consent_given: form.childConsentGiven,
-        child_name: form.childPresent ? form.childName : null,
-        parent_full_name: form.childPresent ? form.fullName : null,
-        parent_contact: form.childPresent ? form.email : null,
-        child_categories: form.childConsentGiven ? form.childConsentCategories : null,
-        child_other_text: form.childConsentCategories.includes('other') ? form.childConsentOther : null,
-      }).then(({ error }) => {
-        if (error) console.error('[image_consents] insert failed:', error);
-      });
-    }
 
     if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.payment_mode === 'voucher_upgrade' || result.amount_due_eur <= 0) {
       fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
@@ -729,8 +693,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
         </div>
       </div>
 
-      <ConsentSection form={form} updateForm={updateForm} />
-
       <div className="pt-6 border-t border-ink-100 space-y-3">
         <label className="flex items-start gap-3 cursor-pointer">
           <input
@@ -755,142 +717,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
           </span>
         </label>
       </div>
-    </div>
-  );
-}
-
-const CONSENT_CATEGORIES: { key: string; label: string }[] = [
-  { key: 'website', label: 'Уебсайт и портфолио на Студиото' },
-  { key: 'social', label: 'Социални мрежи на Студиото' },
-  { key: 'contests', label: 'Конкурси и изложби' },
-  { key: 'print', label: 'Печатни и електронни материали — каталози, брошури, списания, презентации' },
-  { key: 'media', label: 'Медийни, образователни и презентационни формати' },
-];
-
-function CategoryCheckboxes({
-  selected,
-  onChange,
-  otherText,
-  onOtherChange,
-}: {
-  selected: string[];
-  onChange: (categories: string[]) => void;
-  otherText: string;
-  onOtherChange: (text: string) => void;
-}) {
-  const toggle = (key: string) => {
-    onChange(selected.includes(key) ? selected.filter((k) => k !== key) : [...selected, key]);
-  };
-
-  return (
-    <div className="space-y-2 mt-3">
-      {CONSENT_CATEGORIES.map((cat) => (
-        <label key={cat.key} className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={selected.includes(cat.key)}
-            onChange={() => toggle(cat.key)}
-            className="mt-0.5 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
-          />
-          <span className="text-sm text-ink-600">{cat.label}</span>
-        </label>
-      ))}
-      <label className="flex items-start gap-2.5 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={selected.includes('other')}
-          onChange={() => toggle('other')}
-          className="mt-0.5 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
-        />
-        <span className="text-sm text-ink-600 flex items-center gap-2">
-          Друго:
-          <input
-            type="text"
-            value={otherText}
-            onChange={(e) => onOtherChange(e.target.value)}
-            className="input-field !py-1 !px-2 text-sm flex-1"
-            placeholder="уточнете"
-          />
-        </span>
-      </label>
-    </div>
-  );
-}
-
-function ConsentSection({ form, updateForm }: { form: FormData; updateForm: (patch: Partial<FormData>) => void }) {
-  return (
-    <div className="pt-6 border-t border-ink-100">
-      <h3 className="font-serif text-lg text-ink-800 mb-1">Съгласие за използване на изображения</h3>
-      <p className="text-sm text-ink-500 mb-4">По желание — отказът не влияе на цената или изпълнението на фотосесията. Можете да го оттеглите по всяко време.</p>
-
-      <label className="flex items-start gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={form.imageConsentGiven}
-          onChange={(e) => updateForm({ imageConsentGiven: e.target.checked, imageConsentCategories: e.target.checked ? form.imageConsentCategories : [] })}
-          className="mt-1 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
-        />
-        <span className="text-sm text-ink-700 font-medium">
-          Давам съгласие Студио „Жълто куче" да използва избрани изображения от фотосесията, на които се разпознавам, за:
-        </span>
-      </label>
-
-      {form.imageConsentGiven && (
-        <div className="ml-7">
-          <CategoryCheckboxes
-            selected={form.imageConsentCategories}
-            onChange={(categories) => updateForm({ imageConsentCategories: categories })}
-            otherText={form.imageConsentOther}
-            onOtherChange={(text) => updateForm({ imageConsentOther: text })}
-          />
-        </div>
-      )}
-
-      <label className="flex items-start gap-3 cursor-pointer mt-5 pt-5 border-t border-ink-50">
-        <input
-          type="checkbox"
-          checked={form.childPresent}
-          onChange={(e) => updateForm({ childPresent: e.target.checked })}
-          className="mt-1 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
-        />
-        <span className="text-sm text-ink-700">Дете (под 18 г.) ще присъства/участва във фотосесията</span>
-      </label>
-
-      {form.childPresent && (
-        <div className="ml-7 mt-3 p-4 rounded-xl bg-cream-50 space-y-4">
-          <div>
-            <label className="label">Име на детето</label>
-            <input
-              type="text"
-              value={form.childName}
-              onChange={(e) => updateForm({ childName: e.target.value })}
-              className="input-field"
-              placeholder="Име и фамилия"
-            />
-          </div>
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.childConsentGiven}
-              onChange={(e) => updateForm({ childConsentGiven: e.target.checked, childConsentCategories: e.target.checked ? form.childConsentCategories : [] })}
-              className="mt-1 w-4 h-4 rounded border-ink-300 text-yellow-400 focus:ring-yellow-400"
-            />
-            <span className="text-sm text-ink-700 font-medium">
-              Като родител/настойник/попечител давам отделно, изрично съгласие за използване на изображения на детето за:
-            </span>
-          </label>
-          {form.childConsentGiven && (
-            <div className="ml-7">
-              <CategoryCheckboxes
-                selected={form.childConsentCategories}
-                onChange={(categories) => updateForm({ childConsentCategories: categories })}
-                otherText={form.childConsentOther}
-                onOtherChange={(text) => updateForm({ childConsentOther: text })}
-              />
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

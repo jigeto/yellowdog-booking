@@ -10,26 +10,6 @@ import { format } from 'date-fns';
 // just a speed bump so no one triggers a real Stripe refund by accident.
 const REFUND_PIN = '1123';
 
-type ImageConsent = {
-  adult_consent_given: boolean;
-  adult_categories: string[] | null;
-  adult_other_text: string | null;
-  child_present: boolean;
-  child_consent_given: boolean;
-  child_name: string | null;
-  child_categories: string[] | null;
-  child_other_text: string | null;
-};
-
-const CONSENT_CATEGORY_LABELS: Record<string, string> = {
-  website: 'Уебсайт и портфолио',
-  social: 'Социални мрежи',
-  contests: 'Конкурси и изложби',
-  print: 'Печатни и електронни материали',
-  media: 'Медийни/образователни формати',
-  other: 'Друго',
-};
-
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Чакащ',
   confirmed: 'Потвърден',
@@ -337,16 +317,6 @@ function BookingDetailModal({
   const [savingNote, setSavingNote] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
-  const [consent, setConsent] = useState<ImageConsent | null | undefined>(undefined);
-
-  useEffect(() => {
-    supabase
-      .from('image_consents')
-      .select('*')
-      .eq('booking_id', booking.id)
-      .maybeSingle()
-      .then(({ data }) => setConsent(data as ImageConsent | null));
-  }, [booking.id]);
 
   const saveNote = async () => {
     setSavingNote(true);
@@ -445,26 +415,6 @@ function BookingDetailModal({
               {noteError && <span className="text-sm text-error-600">{noteError}</span>}
             </div>
           </div>
-
-          {consent && (consent.adult_consent_given || consent.child_present) && (
-            <div className="p-3 rounded-xl bg-cream-50 space-y-2">
-              <p className="text-xs text-ink-400 uppercase">Съгласие за използване на изображения</p>
-              {consent.adult_consent_given && (
-                <p className="text-sm text-ink-700">
-                  <strong>Клиент:</strong> {(consent.adult_categories || []).map((c) => CONSENT_CATEGORY_LABELS[c] || c).join(', ')}
-                  {consent.adult_other_text && ` (${consent.adult_other_text})`}
-                </p>
-              )}
-              {consent.child_present && (
-                <p className="text-sm text-ink-700">
-                  <strong>Дете{consent.child_name ? ` (${consent.child_name})` : ''}:</strong>{' '}
-                  {consent.child_consent_given
-                    ? (consent.child_categories || []).map((c) => CONSENT_CATEGORY_LABELS[c] || c).join(', ') + (consent.child_other_text ? ` (${consent.child_other_text})` : '')
-                    : 'няма съгласие'}
-                </p>
-              )}
-            </div>
-          )}
 
           {booking.voucher_code && (
             <div className="p-3 rounded-xl bg-yellow-50 border border-yellow-200">
