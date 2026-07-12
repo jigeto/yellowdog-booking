@@ -141,7 +141,7 @@ export function AdminCalendar() {
       {loading ? (
         <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 text-yellow-400 animate-spin" /></div>
       ) : view === 'month' ? (
-        <MonthView slotsByDate={slotsByDate} bookingBySlotId={bookingBySlotId} currentDate={currentDate} statusColor={statusColor} onSlotClick={(slot) => setSelectedSlot({ slot, booking: bookingBySlotId[slot.id] })} />
+        <MonthView slotsByDate={slotsByDate} bookingBySlotId={bookingBySlotId} currentDate={currentDate} statusColor={statusColor} onSlotClick={(slot) => setSelectedSlot({ slot, booking: bookingBySlotId[slot.id] })} onDayClick={(day) => { setCurrentDate(day); setView('day'); }} />
       ) : view === 'week' ? (
         <WeekView slotsByDate={slotsByDate} bookingBySlotId={bookingBySlotId} currentDate={currentDate} statusColor={statusColor} onSlotClick={(slot) => setSelectedSlot({ slot, booking: bookingBySlotId[slot.id] })} />
       ) : (
@@ -161,12 +161,13 @@ export function AdminCalendar() {
 // Month View
 // ============================================================
 
-function MonthView({ slotsByDate, bookingBySlotId, currentDate, statusColor, onSlotClick }: {
+function MonthView({ slotsByDate, bookingBySlotId, currentDate, statusColor, onSlotClick, onDayClick }: {
   slotsByDate: Record<string, TimeSlot[]>;
   bookingBySlotId: Record<string, Booking>;
   currentDate: Date;
   statusColor: (s: TimeSlot) => string;
   onSlotClick: (s: TimeSlot) => void;
+  onDayClick: (day: Date) => void;
 }) {
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -211,7 +212,12 @@ function MonthView({ slotsByDate, bookingBySlotId, currentDate, statusColor, onS
                   </button>
                 ))}
                 {daySlots.length > 3 && (
-                  <div className="text-xs text-ink-400 px-1.5">+{daySlots.length - 3} още</div>
+                  <button
+                    onClick={() => onDayClick(day)}
+                    className="w-full text-left text-xs text-ink-400 hover:text-yellow-600 hover:underline px-1.5"
+                  >
+                    +{daySlots.length - 3} още
+                  </button>
                 )}
               </div>
             </div>
