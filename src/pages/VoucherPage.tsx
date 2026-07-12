@@ -98,13 +98,13 @@ export function VoucherPage() {
       <div className="text-center mb-10 animate-fade-in">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-yellow-50 border border-yellow-200 text-yellow-700 text-sm font-medium mb-4">
           <Gift className="w-4 h-4" />
-          Подарък, който оставя спомен
+          Създаваме спомени, които остават завинаги.
         </div>
         <h1 className="font-serif text-4xl sm:text-5xl text-ink-800 mb-3 text-balance">
           Подарете фотосесия
         </h1>
         <p className="text-ink-500 text-lg max-w-xl mx-auto">
-          Идеалният подарък за любимеца и неговия стопанин. Валиден {validMonths} месеца.
+          Някои подаръци се отварят. Други се помнят цял живот. Подаръчен ваучер за професионална фотосесия. Валиден {validMonths} месеца.
         </p>
       </div>
 

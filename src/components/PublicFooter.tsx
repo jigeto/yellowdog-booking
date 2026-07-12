@@ -34,7 +34,6 @@ export function PublicFooter() {
             </div>
             <p className="text-sm text-ink-300 max-w-xs">
               Първото професионално студио за фотосесия на домашни любимци в България.
-              Създаваме спомени, които остават завинаги.
             </p>
           </div>
 
