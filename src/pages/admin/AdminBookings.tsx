@@ -540,6 +540,21 @@ function ConsentsList({ bookingId }: { bookingId: string }) {
     setWithdrawingId(null);
   };
 
+  const downloadPdf = async (id: string) => {
+    const res = await fetch(`${supabaseUrl}/functions/v1/generate-consent-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}` },
+      body: JSON.stringify({ consent_id: id }),
+    });
+    if (!res.ok) {
+      alert('Грешка при генериране на PDF-а.');
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
   if (loading) return null;
   if (consents.length === 0) {
     return <p className="text-xs text-ink-400 mt-2">Още няма подписано съгласие за тази резервация.</p>;
@@ -572,11 +587,17 @@ function ConsentsList({ bookingId }: { bookingId: string }) {
             <button
               onClick={() => withdraw(c.id)}
               disabled={withdrawingId === c.id}
-              className="text-xs text-error-600 hover:text-error-700 underline"
+              className="text-xs text-error-600 hover:text-error-700 underline mr-4"
             >
               {withdrawingId === c.id ? 'Записва се...' : 'Отбележи като оттеглено'}
             </button>
           )}
+          <button
+            onClick={() => downloadPdf(c.id)}
+            className="text-xs text-ink-500 hover:text-ink-700 underline"
+          >
+            Свали PDF
+          </button>
         </div>
       ))}
     </div>
