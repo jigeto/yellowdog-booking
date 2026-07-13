@@ -148,7 +148,7 @@ export function ConsentForm() {
   };
 
   const sessionDateStr = booking?.starts_at
-    ? new Date(booking.starts_at).toLocaleString('bg-BG', { dateStyle: 'long', timeStyle: 'short' })
+    ? new Date(booking.starts_at).toLocaleString('bg-BG', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Sofia' })
     : null;
 
   // --- Render ---

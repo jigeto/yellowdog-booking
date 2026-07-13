@@ -29,12 +29,17 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function formatDateTimeBg(iso: string): string {
   const d = new Date(iso);
-  const day = d.getDate();
-  const month = BG_MONTHS[d.getMonth()];
-  const year = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${day} ${month} ${year} г., ${hh}:${mm}ч.`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Sofia",
+    year: "numeric", month: "numeric", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  }).formatToParts(d).reduce((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {} as Record<string, string>);
+
+  const month = BG_MONTHS[parseInt(parts.month) - 1];
+  return `${parseInt(parts.day)} ${month} ${parts.year} г., ${parts.hour}:${parts.minute}ч.`;
 }
 
 async function fetchBytes(url: string): Promise<Uint8Array> {

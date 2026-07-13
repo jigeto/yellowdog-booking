@@ -50,6 +50,17 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   }
 }
 
+function sofiaDateOnly(iso: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Sofia",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date(iso)).reduce((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {} as Record<string, string>);
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -105,7 +116,7 @@ Deno.serve(async (req: Request) => {
       contact: contact || null,
       includes_child: !!includes_child,
       child_name: includes_child ? child_name || null : null,
-      session_date: booking.starts_at ? booking.starts_at.slice(0, 10) : null,
+      session_date: booking.starts_at ? sofiaDateOnly(booking.starts_at) : null,
       granted: !!granted,
       categories: granted ? categories || [] : null,
       other_category: other_category || null,
