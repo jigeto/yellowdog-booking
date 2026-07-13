@@ -399,6 +399,16 @@ function BookingDetailModal({
           )}
 
           <div>
+            <label className="label">Съгласие за ползване на изображения</label>
+            <button
+              onClick={() => window.open(`/consent/${booking.reference}`, '_blank')}
+              className="btn-secondary w-full text-sm"
+            >
+              Отвори за подпис на таблет
+            </button>
+          </div>
+
+          <div>
             <label className="label">Бележки за сесията (вижда се само от студиото)</label>
             <textarea
               value={adminNote}

@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { BookingWizard } from './pages/BookingWizard';
+import { ConsentForm } from './pages/ConsentForm';
 import { ConfirmationPage } from './pages/ConfirmationPage';
 import { VoucherPage } from './pages/VoucherPage';
 import { VoucherThankYou } from './pages/VoucherThankYou';
@@ -29,6 +30,15 @@ function PublicShell({ children }: { children: React.ReactNode }) {
 function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
+  const isConsent = location.pathname.startsWith('/consent/');
+
+  if (isConsent) {
+    return (
+      <Routes>
+        <Route path="/consent/:reference" element={<ConsentForm />} />
+      </Routes>
+    );
+  }
 
   if (isAdmin) {
     return (
