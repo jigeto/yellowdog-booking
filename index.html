@@ -7,6 +7,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Студио Жълто куче — Професионална фотосесия за любимци</title>
     <meta name="description" content="Първото професионално студио за фотосесия на домашни любимци в България. Запазете своя час онлайн." />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-NN7EZF81CB"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      // SPA — page_view се праща ръчно при всяка смяна на маршрута (src/lib/analytics.ts), не автоматично тук.
+      gtag('config', 'G-NN7EZF81CB', { send_page_view: false });
+    </script>
   </head>
   <body>
     <div id="root"></div>

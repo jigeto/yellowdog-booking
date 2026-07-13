@@ -16,6 +16,8 @@ import { AdminFinances } from './pages/admin/AdminFinances';
 import { PublicHeader } from './components/PublicHeader';
 import { PublicFooter } from './components/PublicFooter';
 import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+import { trackPageView } from './lib/analytics';
 
 function PublicShell({ children }: { children: React.ReactNode }) {
   return (
@@ -31,6 +33,12 @@ function App() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith('/admin');
   const isConsent = location.pathname.startsWith('/consent/');
+
+  useEffect(() => {
+    if (!location.pathname.startsWith('/admin')) {
+      trackPageView(location.pathname + location.search);
+    }
+  }, [location.pathname, location.search]);
 
   if (isConsent) {
     return (
