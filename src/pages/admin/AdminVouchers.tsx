@@ -348,7 +348,7 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
 
           <div>
             <label className="label">Купувач име *</label>
-            <input type="text" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} placeholder="Иван Иванов" className="input-field" />
+            <input type="text" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} className="input-field" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -358,7 +358,7 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
             </div>
             <div>
               <label className="label">Получател имейл</label>
-              <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="maria@example.com" className="input-field" />
+              <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="input-field" />
             </div>
           </div>
 

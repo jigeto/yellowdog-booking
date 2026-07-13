@@ -171,11 +171,11 @@ export function VoucherPage() {
             <div className="space-y-4">
               <div>
                 <label className="label">Вашето име *</label>
-                <input type="text" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} placeholder="Иван Иванов" className="input-field" />
+                <input type="text" value={purchaserName} onChange={(e) => setPurchaserName(e.target.value)} className="input-field" />
               </div>
               <div>
                 <label className="label">Вашият имейл *</label>
-                <input type="email" value={purchaserEmail} onChange={(e) => setPurchaserEmail(e.target.value)} placeholder="ivan@example.com" className="input-field" />
+                <input type="email" value={purchaserEmail} onChange={(e) => setPurchaserEmail(e.target.value)} className="input-field" />
               </div>
             </div>
           </div>
@@ -187,15 +187,15 @@ export function VoucherPage() {
             <div className="space-y-4">
               <div>
                 <label className="label">Име на получателя</label>
-                <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="Мария Иванова" className="input-field" />
+                <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="input-field" />
               </div>
               <div>
                 <label className="label">Имейл на получателя</label>
-                <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="maria@example.com" className="input-field" />
+                <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="input-field" />
               </div>
               <div>
                 <label className="label">Лично послание</label>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Честит рожден ден! С любов, Иван..." rows={3} className="input-field resize-none" />
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Честит рожден ден! С любов..." rows={3} className="input-field resize-none" />
               </div>
             </div>
           </div>

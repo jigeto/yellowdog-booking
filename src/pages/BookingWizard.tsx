@@ -584,7 +584,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
             type="text"
             value={form.fullName}
             onChange={(e) => updateForm({ fullName: e.target.value })}
-            placeholder="Иван Иванов"
             className="input-field"
           />
         </div>
@@ -594,7 +593,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
             type="tel"
             value={form.phone}
             onChange={(e) => updateForm({ phone: e.target.value })}
-            placeholder="+359 88 123 4567"
             className="input-field"
           />
         </div>
@@ -604,7 +602,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
             type="email"
             value={form.email}
             onChange={(e) => updateForm({ email: e.target.value })}
-            placeholder="ivan@example.com"
             className="input-field"
           />
         </div>
@@ -619,7 +616,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
               type="text"
               value={form.petName}
               onChange={(e) => updateForm({ petName: e.target.value })}
-              placeholder="Рекс"
               className="input-field"
             />
           </div>
@@ -655,7 +651,6 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
               type="text"
               value={form.petBreed}
               onChange={(e) => updateForm({ petBreed: e.target.value })}
-              placeholder="Лабрадор"
               className="input-field"
             />
           </div>
@@ -686,7 +681,7 @@ function StepDetails({ form, updateForm }: { form: FormData; updateForm: (patch:
           <textarea
             value={form.note}
             onChange={(e) => updateForm({ note: e.target.value })}
-            placeholder="Специални предпочитания, характер на любимеца, очаквания..."
+            placeholder="Алергии, характер на любимеца, и други важни неща, които трябва да знаем..."
             rows={3}
             className="input-field resize-none"
           />
