@@ -64,9 +64,9 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const {
       booking_reference,
-      consent_type,
       full_name,
       contact,
+      includes_child,
       child_name,
       granted,
       categories,
@@ -74,11 +74,8 @@ Deno.serve(async (req: Request) => {
       signature_png,
     } = body;
 
-    if (!booking_reference || !consent_type || !full_name) {
-      throw new Error("booking_reference, consent_type and full_name are required");
-    }
-    if (consent_type !== "adult" && consent_type !== "child") {
-      throw new Error("invalid consent_type");
+    if (!booking_reference || !full_name) {
+      throw new Error("booking_reference and full_name are required");
     }
     if (granted && !signature_png) {
       throw new Error("signature_png is required when granted is true");
@@ -104,10 +101,10 @@ Deno.serve(async (req: Request) => {
 
     const { error: insertError } = await supabase.from("image_consents").insert({
       booking_id: booking.id,
-      consent_type,
       full_name,
       contact: contact || null,
-      child_name: child_name || null,
+      includes_child: !!includes_child,
+      child_name: includes_child ? child_name || null : null,
       session_date: booking.starts_at ? booking.starts_at.slice(0, 10) : null,
       granted: !!granted,
       categories: granted ? categories || [] : null,

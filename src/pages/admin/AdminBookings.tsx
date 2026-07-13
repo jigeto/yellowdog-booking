@@ -406,6 +406,7 @@ function BookingDetailModal({
             >
               Отвори за подпис на таблет
             </button>
+            <ConsentsList bookingId={booking.id} />
           </div>
 
           <div>
@@ -486,6 +487,98 @@ function BookingDetailModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+type ImageConsent = {
+  id: string;
+  full_name: string;
+  contact: string | null;
+  includes_child: boolean;
+  child_name: string | null;
+  granted: boolean;
+  categories: string[] | null;
+  other_category: string | null;
+  signature_png: string | null;
+  withdrawn_at: string | null;
+  created_at: string;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  website: 'Уебсайт и портфолио',
+  social: 'Социални мрежи',
+  contests: 'Конкурси и изложби',
+  print: 'Печатни/електронни материали',
+  media: 'Медийни/образователни формати',
+};
+
+function ConsentsList({ bookingId }: { bookingId: string }) {
+  const [consents, setConsents] = useState<ImageConsent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [withdrawingId, setWithdrawingId] = useState<string | null>(null);
+
+  const load = async () => {
+    const { data } = await supabase
+      .from('image_consents')
+      .select('*')
+      .eq('booking_id', bookingId)
+      .order('created_at', { ascending: false });
+    setConsents((data || []) as ImageConsent[]);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingId]);
+
+  const withdraw = async (id: string) => {
+    setWithdrawingId(id);
+    await supabase.from('image_consents').update({ withdrawn_at: new Date().toISOString() }).eq('id', id);
+    await load();
+    setWithdrawingId(null);
+  };
+
+  if (loading) return null;
+  if (consents.length === 0) {
+    return <p className="text-xs text-ink-400 mt-2">Още няма подписано съгласие за тази резервация.</p>;
+  }
+
+  return (
+    <div className="space-y-2 mt-3">
+      {consents.map((c) => (
+        <div key={c.id} className="p-3 rounded-xl bg-cream-50 border border-ink-100">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-ink-800">{c.full_name}{c.includes_child && c.child_name ? ` + ${c.child_name} (дете)` : ''}</span>
+            <span className={classNames(
+              'px-2 py-0.5 rounded-full text-xs font-medium',
+              c.withdrawn_at ? 'bg-ink-100 text-ink-500' : c.granted ? 'bg-success-100 text-success-700' : 'bg-ink-100 text-ink-500'
+            )}>
+              {c.withdrawn_at ? 'Оттеглено' : c.granted ? 'Съгласен' : 'Отказал'}
+            </span>
+          </div>
+          <p className="text-xs text-ink-400 mb-2">{formatDateTime(c.created_at)}</p>
+          {c.granted && c.categories && c.categories.length > 0 && (
+            <p className="text-xs text-ink-600 mb-2">
+              {c.categories.map((cat) => CATEGORY_LABELS[cat] || cat).join(', ')}
+              {c.other_category ? `, ${c.other_category}` : ''}
+            </p>
+          )}
+          {c.signature_png && (
+            <img src={c.signature_png} alt="Подпис" className="h-16 bg-white rounded border border-ink-100 mb-2" />
+          )}
+          {c.granted && !c.withdrawn_at && (
+            <button
+              onClick={() => withdraw(c.id)}
+              disabled={withdrawingId === c.id}
+              className="text-xs text-error-600 hover:text-error-700 underline"
+            >
+              {withdrawingId === c.id ? 'Записва се...' : 'Отбележи като оттеглено'}
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

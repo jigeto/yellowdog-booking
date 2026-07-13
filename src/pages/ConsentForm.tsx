@@ -11,7 +11,7 @@ type BookingInfo = {
   starts_at: string | null;
 };
 
-type Step = 'loading' | 'not_found' | 'choose_type' | 'form' | 'signature' | 'submitting' | 'done_granted' | 'done_declined' | 'error';
+type Step = 'loading' | 'not_found' | 'form' | 'signature' | 'submitting' | 'done_granted' | 'done_declined' | 'error';
 
 const CATEGORIES = [
   { key: 'website', label: 'Уебсайт и портфолио на Студиото' },
@@ -25,9 +25,9 @@ export function ConsentForm() {
   const { reference } = useParams<{ reference: string }>();
   const [step, setStep] = useState<Step>('loading');
   const [booking, setBooking] = useState<BookingInfo | null>(null);
-  const [consentType, setConsentType] = useState<'adult' | 'child'>('adult');
   const [fullName, setFullName] = useState('');
   const [contact, setContact] = useState('');
+  const [includesChild, setIncludesChild] = useState(false);
   const [childName, setChildName] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [otherCategory, setOtherCategory] = useState('');
@@ -56,7 +56,7 @@ export function ConsentForm() {
       setBooking(data);
       setFullName(data.customer_name || '');
       setContact(data.customer_email || '');
-      setStep('choose_type');
+      setStep('form');
     })();
   }, [reference]);
 
@@ -73,10 +73,10 @@ export function ConsentForm() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
         body: JSON.stringify({
           booking_reference: reference,
-          consent_type: consentType,
           full_name: fullName,
           contact,
-          child_name: consentType === 'child' ? childName : null,
+          includes_child: includesChild,
+          child_name: includesChild ? childName : null,
           granted,
           categories: granted ? categories : [],
           other_category: granted ? otherCategory : null,
@@ -147,6 +147,10 @@ export function ConsentForm() {
     submit(true, dataUrl);
   };
 
+  const sessionDateStr = booking?.starts_at
+    ? new Date(booking.starts_at).toLocaleString('bg-BG', { dateStyle: 'long', timeStyle: 'short' })
+    : null;
+
   // --- Render ---
 
   if (step === 'loading') {
@@ -170,61 +174,53 @@ export function ConsentForm() {
 
   return (
     <div className="min-h-screen bg-cream-50 px-4 py-8 flex flex-col items-center">
-      <div className="mb-6"><Logo /></div>
+      <div className="mb-4"><Logo /></div>
+
+      {booking && (
+        <div className="max-w-xl w-full mb-4 text-center text-xs text-ink-400">
+          Резервация <span className="font-mono">{booking.reference}</span>
+          {sessionDateStr && <> · {sessionDateStr}</>}
+        </div>
+      )}
 
       <div className="max-w-xl w-full">
-        {step === 'choose_type' && (
-          <div className="card p-6 sm:p-8 text-center animate-fade-in">
-            <h1 className="font-serif text-2xl text-ink-800 mb-6">Тази фотосесия е за:</h1>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={() => { setConsentType('adult'); setStep('form'); }}
-                className="p-8 rounded-2xl border-2 border-ink-100 hover:border-yellow-400 hover:bg-yellow-50 transition-colors text-lg font-medium text-ink-800"
-              >
-                Мен
-              </button>
-              <button
-                onClick={() => { setConsentType('child'); setStep('form'); }}
-                className="p-8 rounded-2xl border-2 border-ink-100 hover:border-yellow-400 hover:bg-yellow-50 transition-colors text-lg font-medium text-ink-800"
-              >
-                Дете
-              </button>
-            </div>
-          </div>
-        )}
-
         {step === 'form' && (
           <div className="card p-6 sm:p-8 animate-fade-in">
             <h1 className="font-serif text-xl text-ink-800 mb-4">
-              {consentType === 'adult'
-                ? 'Отделно съгласие за използване на изображения за портфолио и маркетинг'
-                : 'Съгласие за използване на изображения на дете за портфолио и маркетинг'}
+              Съгласие за използване на изображения за портфолио и маркетинг
             </h1>
 
             <p className="text-sm text-ink-600 leading-relaxed mb-5">
-              {consentType === 'adult' ? (
-                <>Аз, долуподписаният/долуподписаната, декларирам, че съм информиран/а и доброволно давам съгласието си Студио „Жълто куче“ да използва избрани изображения от фотосесията, на които се разпознавам, за посочените по-долу цели.</>
-              ) : (
-                <>Аз, долуподписаният/долуподписаната, декларирам, че съм родител/настойник/попечител/законен представител на детето и давам отделно, изрично и доброволно съгласие Студио „Жълто куче“ да използва избрани изображения от фотосесията, на които детето се разпознава, за посочените по-долу цели.</>
-              )}
+              Аз, долуподписаният/долуподписаната, декларирам, че съм информиран/а и доброволно давам съгласието си Студио „Жълто куче“ да използва избрани изображения от фотосесията, на които се разпознавам, за посочените по-долу цели. Ако на фотосесията присъства и дете, посочено по-долу, декларирам, че съм негов родител/настойник/попечител/законен представител и давам съгласие по същия начин и за него.
             </p>
 
-            <div className="space-y-3 mb-5">
+            <div className="space-y-3 mb-4">
               <div>
-                <label className="label">{consentType === 'adult' ? 'Име и фамилия' : 'Име и фамилия на родител/законен представител'}</label>
+                <label className="label">Име и фамилия</label>
                 <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="input-field" />
               </div>
-              {consentType === 'child' && (
-                <div>
-                  <label className="label">Име на детето</label>
-                  <input value={childName} onChange={(e) => setChildName(e.target.value)} className="input-field" />
-                </div>
-              )}
               <div>
                 <label className="label">E-mail / телефон</label>
                 <input value={contact} onChange={(e) => setContact(e.target.value)} className="input-field" />
               </div>
             </div>
+
+            <label className="flex items-center gap-2 cursor-pointer mb-4">
+              <input
+                type="checkbox"
+                checked={includesChild}
+                onChange={(e) => setIncludesChild(e.target.checked)}
+                className="w-4 h-4 rounded border-ink-300 text-yellow-400"
+              />
+              <span className="text-sm text-ink-700">На фотосесията присъства и дете</span>
+            </label>
+
+            {includesChild && (
+              <div className="mb-5">
+                <label className="label">Име на детето</label>
+                <input value={childName} onChange={(e) => setChildName(e.target.value)} className="input-field" />
+              </div>
+            )}
 
             <p className="text-sm font-medium text-ink-700 mb-2">Съгласявам се изображенията да се използват за:</p>
             <div className="space-y-2 mb-3">
@@ -257,7 +253,7 @@ export function ConsentForm() {
               </button>
               <button
                 onClick={handleAgreeContinue}
-                disabled={!fullName.trim() || (consentType === 'child' && !childName.trim())}
+                disabled={!fullName.trim() || (includesChild && !childName.trim())}
                 className="btn-primary w-full py-4 text-base"
               >
                 Съгласявам се и подписвам
@@ -326,3 +322,4 @@ export function ConsentForm() {
     </div>
   );
 }
+
