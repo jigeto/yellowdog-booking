@@ -1,0 +1,16 @@
+{
+  "name": "Жълто куче — Admin",
+  "short_name": "ЖК Admin",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#FAF7F0",
+  "theme_color": "#1A1A17",
+  "icons": [
+    {
+      "src": "https://yellowdog.bg/wp-content/uploads/2023/01/cropped-logo-50px-300x300.jpg",
+      "sizes": "300x300",
+      "type": "image/jpeg"
+    }
+  ]
+}
