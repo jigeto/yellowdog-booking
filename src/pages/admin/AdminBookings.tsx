@@ -126,6 +126,21 @@ export function AdminBookings() {
     load();
   };
 
+  const handleDelete = async (booking: Booking) => {
+    setActionLoading(true);
+    setActionError(null);
+    const { error } = await supabase.rpc('admin_delete_booking', { p_booking_id: booking.id });
+    if (error) {
+      console.error('[handleDelete] failed:', error);
+      setActionError(`Грешка при изтриване: ${error.message}`);
+      setActionLoading(false);
+      return;
+    }
+    setActionLoading(false);
+    setSelectedBooking(null);
+    load();
+  };
+
   const handleRefund = async (booking: Booking) => {
     setActionLoading(true);
     setActionError(null);
@@ -284,6 +299,7 @@ export function AdminBookings() {
           onClose={() => { setSelectedBooking(null); setActionError(null); }}
           onAction={handleAction}
           onRefund={handleRefund}
+          onDelete={handleDelete}
           onNoteSaved={load}
           actionLoading={actionLoading}
           actionError={actionError}
@@ -298,6 +314,7 @@ function BookingDetailModal({
   onClose,
   onAction,
   onRefund,
+  onDelete,
   onNoteSaved,
   actionLoading,
   actionError,
@@ -306,6 +323,7 @@ function BookingDetailModal({
   onClose: () => void;
   onAction: (b: Booking, a: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => void;
   onRefund: (b: Booking) => void;
+  onDelete: (b: Booking) => void;
   onNoteSaved: () => void;
   actionLoading: boolean;
   actionError: string | null;
@@ -457,6 +475,19 @@ function BookingDetailModal({
             {(booking.status === 'pending' || booking.status === 'confirmed') && (
               <button onClick={() => onAction(booking, 'cancelled')} disabled={actionLoading} className="btn-secondary w-full text-sm text-error-600 border-error-200 hover:bg-error-50">
                 <Ban className="w-4 h-4" /> Откажи
+              </button>
+            )}
+            {booking.status === 'cancelled' && (
+              <button
+                onClick={() => {
+                  if (window.confirm(`Наистина ли да изтрия завинаги резервация ${booking.reference}? Това не може да се отмени.`)) {
+                    onDelete(booking);
+                  }
+                }}
+                disabled={actionLoading}
+                className="btn-secondary w-full text-sm text-error-700 border-error-200 hover:bg-error-50"
+              >
+                <Ban className="w-4 h-4" /> Изтрий завинаги
               </button>
             )}
             {(booking.payment_status === 'deposit_paid' || booking.payment_status === 'paid_full') && (
