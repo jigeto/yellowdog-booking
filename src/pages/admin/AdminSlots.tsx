@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type TimeSlot } from '../../lib/supabase';
-import { classNames, formatTime } from '../../lib/utils';
+import { supabase, type TimeSlot, type Booking } from '../../lib/supabase';
+import { classNames, formatTime, formatEUR } from '../../lib/utils';
 import { Plus, Ban, X, Loader2, Trash2, CalendarPlus, Clock } from 'lucide-react';
 import { parseISO, startOfDay } from 'date-fns';
 import { bg } from 'date-fns/locale';
@@ -12,6 +12,17 @@ export function AdminSlots() {
   const [showCreate, setShowCreate] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
   const [showBlock, setShowBlock] = useState(false);
+  const [viewingBooking, setViewingBooking] = useState<Booking | 'loading' | null>(null);
+
+  const openBookingForSlot = async (slotId: string) => {
+    setViewingBooking('loading');
+    const { data } = await supabase
+      .from('booking_admin_view')
+      .select('*')
+      .eq('slot_id', slotId)
+      .maybeSingle();
+    setViewingBooking((data as Booking) || null);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -91,10 +102,11 @@ export function AdminSlots() {
                   {daySlots.map((slot) => (
                     <div
                       key={slot.id}
+                      onClick={() => slot.status === 'booked' && openBookingForSlot(slot.id)}
                       className={classNames(
                         'p-3 rounded-xl border text-sm',
                         slot.status === 'available' && 'bg-yellow-50 border-yellow-200 text-ink-700',
-                        slot.status === 'booked' && 'bg-success-50 border-success-200 text-ink-700',
+                        slot.status === 'booked' && 'bg-success-50 border-success-200 text-ink-700 cursor-pointer hover:border-success-400 transition-colors',
                         slot.status === 'blocked' && 'bg-ink-100 border-ink-200 text-ink-500'
                       )}
                     >
@@ -123,6 +135,27 @@ export function AdminSlots() {
       {showCreate && <CreateSlotModal onClose={() => setShowCreate(false)} onCreated={load} />}
       {showBulk && <BulkCreateModal onClose={() => setShowBulk(false)} onCreated={load} />}
       {showBlock && <BlockModal onClose={() => setShowBlock(false)} onCreated={load} />}
+      {viewingBooking && (
+        <Modal title="Детайли на резервацията" onClose={() => setViewingBooking(null)}>
+          {viewingBooking === 'loading' ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 text-yellow-400 animate-spin" /></div>
+          ) : (
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between"><span className="text-ink-400">Референция</span><span className="font-mono font-medium">{viewingBooking.reference}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Клиент</span><span className="font-medium">{viewingBooking.customer_name || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Телефон</span><span>{viewingBooking.customer_phone || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Имейл</span><span>{viewingBooking.customer_email || '—'}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Любимец</span><span>{viewingBooking.pet_name || '—'} ({viewingBooking.num_pets} бр.)</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Пакет</span><span className="capitalize">{viewingBooking.package_slug}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Статус</span><span>{viewingBooking.status}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Плащане</span><span>{viewingBooking.payment_status}</span></div>
+              <div className="flex justify-between"><span className="text-ink-400">Сума</span><span>{formatEUR(viewingBooking.total_eur)} (платено: {formatEUR(viewingBooking.amount_paid_eur)})</span></div>
+              {viewingBooking.note && <div><span className="text-ink-400 block mb-1">Бележка от клиента</span><span>{viewingBooking.note}</span></div>}
+              {viewingBooking.admin_note && <div><span className="text-ink-400 block mb-1">Бележки за сесията</span><span>{viewingBooking.admin_note}</span></div>}
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   );
 }
