@@ -8,9 +8,7 @@ export function PublicHeader() {
   return (
     <header className="sticky top-0 z-40 bg-cream-50/80 backdrop-blur-md border-b border-ink-100/50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <a href="https://yellowdog.bg" target="_blank" rel="noopener noreferrer">
-          <Logo />
-        </a>
+        <Logo href="https://yellowdog.bg" />
         <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             to="/"
