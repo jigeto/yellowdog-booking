@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase, type TimeSlot } from '../../lib/supabase';
 import { classNames, formatTime } from '../../lib/utils';
 import { Plus, Ban, X, Loader2, Trash2, CalendarPlus, Clock } from 'lucide-react';
-import { parseISO } from 'date-fns';
+import { parseISO, startOfDay } from 'date-fns';
 import { bg } from 'date-fns/locale';
 import { format } from 'date-fns';
 
@@ -15,7 +15,11 @@ export function AdminSlots() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from('time_slots').select('*').order('starts_at');
+    const { data } = await supabase
+      .from('time_slots')
+      .select('*')
+      .gte('starts_at', startOfDay(new Date()).toISOString())
+      .order('starts_at');
     setSlots(data as TimeSlot[] || []);
     setLoading(false);
   };
