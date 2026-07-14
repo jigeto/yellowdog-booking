@@ -26,11 +26,13 @@ export function PublicFooter() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <div className="mb-4">
-              <img
-                src="https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png"
-                alt="Студио Жълто куче"
-                className="h-12 w-auto object-contain"
-              />
+              <a href="https://yellowdog.bg" target="_blank" rel="noopener noreferrer">
+                <img
+                  src="https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png"
+                  alt="Студио Жълто куче"
+                  className="h-12 w-auto object-contain"
+                />
+              </a>
             </div>
             <p className="text-sm text-ink-300 max-w-xs">
               Първото професионално студио за фотосесия на домашни любимци в България.
