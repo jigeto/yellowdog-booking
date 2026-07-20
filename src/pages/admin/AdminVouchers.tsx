@@ -43,6 +43,20 @@ export function AdminVouchers() {
   const [showCreate, setShowCreate] = useState(false);
   const [resendingId, setResendingId] = useState<string | null>(null);
 
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const handleCancel = async (v: Voucher) => {
+    if (!window.confirm(`Наистина ли да анулираш ваучер ${v.code}? Той няма да може повече да се използва.`)) return;
+    setCancellingId(v.id);
+    const { error } = await supabase.rpc('admin_cancel_voucher', { p_voucher_id: v.id });
+    if (error) {
+      alert(`Грешка: ${error.message}`);
+    } else {
+      load();
+    }
+    setCancellingId(null);
+  };
+
   const handleResend = async (v: Voucher) => {
     setResendingId(v.id);
     try {
@@ -189,13 +203,24 @@ export function AdminVouchers() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleResend(v)}
-                      disabled={resendingId === v.id}
-                      className="text-xs text-ink-500 hover:text-ink-700 underline whitespace-nowrap"
-                    >
-                      {resendingId === v.id ? 'Праща се...' : 'Изпрати по имейл'}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleResend(v)}
+                        disabled={resendingId === v.id}
+                        className="text-xs text-ink-500 hover:text-ink-700 underline whitespace-nowrap"
+                      >
+                        {resendingId === v.id ? 'Праща се...' : 'Изпрати по имейл'}
+                      </button>
+                      {v.status === 'active' && (
+                        <button
+                          onClick={() => handleCancel(v)}
+                          disabled={cancellingId === v.id}
+                          className="text-xs text-error-600 hover:text-error-700 underline whitespace-nowrap"
+                        >
+                          {cancellingId === v.id ? 'Анулира се...' : 'Анулирай'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -217,6 +242,7 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [message, setMessage] = useState('');
+  const [chargeAmount, setChargeAmount] = useState('50');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [issuedCode, setIssuedCode] = useState<string | null>(null);
@@ -228,6 +254,19 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
         .then(({ data }) => { if (data) setPackages(data as Package[]); });
     }
   }, [kind]);
+
+  // Предзарежда разумна сума по подразбиране при смяна на типа: пълната
+  // цена на избрания пакет за подаръчен ваучер, стандартното капаро за
+  // код без капаро — и двете редактируеми, в случай че реално е платено
+  // друго (напр. само капаро на клиент, купуващ директно пакет).
+  useEffect(() => {
+    if (kind === 'deposit_waiver') {
+      setChargeAmount('50');
+    } else if (kind === 'gift_package' && selectedSlug) {
+      const pkg = packages.find((p) => p.slug === selectedSlug);
+      if (pkg) setChargeAmount(String(pkg.price_eur));
+    }
+  }, [kind, selectedSlug, packages]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -248,6 +287,7 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
       p_recipient_email: recipientEmail || null,
       p_purchaser_name: purchaserName,
       p_message: message || null,
+      p_charge_amount: chargeAmount ? parseFloat(chargeAmount) : null,
     });
 
     if (rpcError) {
@@ -381,6 +421,16 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
               </p>
             </div>
           )}
+
+          <div>
+            <label className="label">Реално платена сума при издаването (€)</label>
+            <input type="number" value={chargeAmount} onChange={(e) => setChargeAmount(e.target.value)} className="input-field" />
+            <p className="text-xs text-ink-400 mt-1">
+              {kind === 'deposit_waiver'
+                ? 'Ако клиентът вече ти е платил капаро лично (в брой/превод), запиши го тук — влиза коректно във Финанси. Остатъкът се доплаща на място при резервацията.'
+                : 'По подразбиране пълната цена на пакета — намали, ако клиентът реално е платил по-малко (напр. само капаро).'}
+            </p>
+          </div>
 
           <div>
             <label className="label">Купувач име *</label>
