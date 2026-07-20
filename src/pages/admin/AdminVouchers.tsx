@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, type Voucher, type Package } from '../../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey, type Voucher, type Package } from '../../lib/supabase';
 import { classNames, formatEUR, formatDate } from '../../lib/utils';
 import { Plus, X, Loader2, Search, Gift, Ticket, Filter, Copy, Check, Sparkles } from 'lucide-react';
 
@@ -41,6 +41,27 @@ export function AdminVouchers() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [showCreate, setShowCreate] = useState(false);
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResend = async (v: Voucher) => {
+    setResendingId(v.id);
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-voucher-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+        body: JSON.stringify({ voucher_code: v.code }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || body.reason === 'no_email_on_file') {
+        alert(body.reason === 'no_email_on_file' ? 'Няма записан имейл за този ваучер.' : `Грешка: ${body.error || 'неизвестна'}`);
+      } else {
+        alert('Изпратено.');
+      }
+    } catch (e) {
+      alert(`Грешка: ${e instanceof Error ? e.message : 'неизвестна'}`);
+    }
+    setResendingId(null);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -127,6 +148,7 @@ export function AdminVouchers() {
                 <th className="px-4 py-3 font-medium">Статус</th>
                 <th className="px-4 py-3 font-medium">Валиден до</th>
                 <th className="px-4 py-3 font-medium">Източник</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -165,6 +187,15 @@ export function AdminVouchers() {
                     <span className={classNames('px-2 py-1 rounded-full text-xs font-medium', SOURCE_COLORS[v.source])}>
                       {SOURCE_LABELS[v.source] || v.source}
                     </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleResend(v)}
+                      disabled={resendingId === v.id}
+                      className="text-xs text-ink-500 hover:text-ink-700 underline whitespace-nowrap"
+                    >
+                      {resendingId === v.id ? 'Праща се...' : 'Изпрати по имейл'}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -230,6 +261,11 @@ function IssueVoucherModal({ onClose, onCreated }: { onClose: () => void; onCrea
     const code = data as string | null;
     if (code) {
       setIssuedCode(code);
+      fetch(`${supabaseUrl}/functions/v1/send-voucher-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+        body: JSON.stringify({ voucher_code: code }),
+      }).catch((e) => console.error('[send-voucher-email] failed:', e));
     } else {
       onCreated();
       onClose();

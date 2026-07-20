@@ -46,16 +46,15 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const icsContent = generateBookingICS(booking);
+    const icsAttachment = [{ filename: "fotosesiya.ics", content: btoa(unescape(encodeURIComponent(icsContent))) }];
+
     if (booking.customer_email) {
       const { subject, html } = bookingConfirmationEmail(booking);
-      const icsContent = generateBookingICS(booking);
-      const icsBase64 = btoa(unescape(encodeURIComponent(icsContent)));
-      await sendEmail(booking.customer_email, subject, html, [
-        { filename: "fotosesiya.ics", content: icsBase64 },
-      ]);
+      await sendEmail(booking.customer_email, subject, html, icsAttachment);
     }
     const { subject: officeSubject, html: officeHtml } = adminBookingNotificationEmail(booking);
-    await sendEmail(OFFICE_EMAIL, officeSubject, officeHtml);
+    await sendEmail(OFFICE_EMAIL, officeSubject, officeHtml, icsAttachment);
 
     return new Response(
       JSON.stringify({ sent: true }),

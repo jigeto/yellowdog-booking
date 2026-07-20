@@ -78,17 +78,20 @@ Deno.serve(async (req: Request) => {
                   .select("*")
                   .eq("reference", reference)
                   .maybeSingle();
+
+                let icsAttachment: { filename: string; content: string }[] | undefined;
+                if (booking) {
+                  const icsContent = generateBookingICS(booking);
+                  icsAttachment = [{ filename: "fotosesiya.ics", content: btoa(unescape(encodeURIComponent(icsContent))) }];
+                }
+
                 if (booking?.customer_email) {
                   const { subject, html } = bookingConfirmationEmail(booking);
-                  const icsContent = generateBookingICS(booking);
-                  const icsBase64 = btoa(unescape(encodeURIComponent(icsContent)));
-                  await sendEmail(booking.customer_email, subject, html, [
-                    { filename: "fotosesiya.ics", content: icsBase64 },
-                  ]);
+                  await sendEmail(booking.customer_email, subject, html, icsAttachment);
                 }
                 if (booking) {
                   const { subject: officeSubject, html: officeHtml } = adminBookingNotificationEmail(booking);
-                  await sendEmail(OFFICE_EMAIL, officeSubject, officeHtml);
+                  await sendEmail(OFFICE_EMAIL, officeSubject, officeHtml, icsAttachment);
                 }
               } catch (emailErr) {
                 console.error("[stripe-webhook] booking confirmation email failed:", emailErr);
