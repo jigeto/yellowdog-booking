@@ -185,7 +185,7 @@ export function BookingWizard() {
 
     const result = data as { booking_id: string; reference: string; amount_due_eur: number; payment_mode: string };
 
-    if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.payment_mode === 'voucher_upgrade' || result.amount_due_eur <= 0) {
+    if (result.payment_mode === 'deposit_waived' || result.payment_mode === 'voucher' || result.amount_due_eur <= 0) {
       fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },

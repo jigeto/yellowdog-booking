@@ -45,8 +45,21 @@ Deno.serve(async (req: Request) => {
       const remainingTotal = (booking.total_eur ?? 0) - (booking.amount_paid_eur ?? 0);
       const mode = body.mode || booking.payment_mode;
       const isFull = mode === "full";
+      const isVoucherUpgrade = mode === "voucher_upgrade";
 
       let amountDue = isFull ? remainingTotal : Math.min(booking.deposit_eur ?? 0, remainingTotal);
+
+      if (isVoucherUpgrade) {
+        if (!booking.voucher_id) {
+          throw new Error("voucher_upgrade booking has no linked voucher");
+        }
+        const { data: voucher } = await supabase
+          .from("vouchers")
+          .select("amount_eur")
+          .eq("id", booking.voucher_id)
+          .maybeSingle();
+        amountDue = remainingTotal - (voucher?.amount_eur ?? 0);
+      }
 
       // Full upfront payment gets the configurable prepay discount (same
       // setting the frontend reads to show the discounted price). Only
@@ -70,7 +83,9 @@ Deno.serve(async (req: Request) => {
         );
       }
       const packageName = booking.packages?.name_bg || "фотосесия";
-      const label = isFull
+      const label = isVoucherUpgrade
+        ? `Доплащане на разлика — фотосесия ${packageName}`
+        : isFull
         ? `Фотосесия ${packageName} — пълно плащане`
         : `Капаро за фотосесия ${packageName}`;
 
@@ -93,7 +108,7 @@ Deno.serve(async (req: Request) => {
           type: "booking",
           booking_reference: booking.reference,
           booking_id: booking.id,
-          mode: isFull ? "full" : "deposit",
+          mode: isVoucherUpgrade ? "voucher_upgrade" : isFull ? "full" : "deposit",
         },
         client_reference_id: booking.reference,
       });

@@ -71,6 +71,24 @@ Deno.serve(async (req: Request) => {
               console.error(`[stripe-webhook] confirm_booking_payment failed for ${reference}:`, confirmErr);
             }
 
+            if (session.metadata?.mode === "voucher_upgrade") {
+              const { data: b } = await supabase
+                .from("bookings")
+                .select("id, voucher_id")
+                .eq("reference", reference)
+                .maybeSingle();
+              if (b?.voucher_id) {
+                const { error: voucherErr } = await supabase
+                  .from("vouchers")
+                  .update({ status: "redeemed", redeemed_booking_id: b.id })
+                  .eq("id", b.voucher_id)
+                  .neq("status", "redeemed");
+                if (voucherErr) {
+                  console.error(`[stripe-webhook] failed to mark voucher redeemed for ${reference}:`, voucherErr);
+                }
+              }
+            }
+
             if (isFirst) {
               try {
                 const { data: booking } = await supabase
