@@ -176,10 +176,11 @@ export function AdminVouchers() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-ink-800 whitespace-nowrap">
-                    {v.kind === 'gift_package' && v.package_price_eur != null
-                      ? formatEUR(v.package_price_eur)
-                      : '—'}
-                    {v.kind === 'gift_package' && v.package_name_bg && (
+                    {formatEUR(v.amount_eur)}
+                    {v.kind === 'gift_package' && v.package_price_eur != null && v.amount_eur < v.package_price_eur && (
+                      <div className="text-xs text-yellow-600">от {formatEUR(v.package_price_eur)}</div>
+                    )}
+                    {v.package_name_bg && (
                       <div className="text-xs text-ink-400">{v.package_name_bg}</div>
                     )}
                   </td>
