@@ -5,7 +5,7 @@ export function Logo({ className = '', href }: { className?: string; href?: stri
     <img
       src="https://yellowdog.bg/wp-content/uploads/2023/02/Logo_Yellow_Dog.png"
       alt="Студио Жълто куче"
-      className="h-10 w-auto object-contain transition-opacity group-hover:opacity-80"
+      className="h-8 sm:h-10 w-auto object-contain transition-opacity group-hover:opacity-80"
     />
   );
 
