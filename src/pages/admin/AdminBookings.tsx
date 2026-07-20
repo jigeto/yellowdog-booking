@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { supabase, supabaseUrl, type Booking } from '../../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey, type Booking } from '../../lib/supabase';
 import { classNames, formatEUR, formatDateTime } from '../../lib/utils';
 import { Search, Loader2, X, CheckCircle, Ban, AlertCircle, RotateCcw, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseISO } from 'date-fns';
@@ -121,6 +121,37 @@ export function AdminBookings() {
         return;
       }
     }
+    setActionLoading(false);
+    setSelectedBooking(null);
+    load();
+  };
+
+  const handleMarkDepositPaid = async (booking: Booking) => {
+    setActionLoading(true);
+    setActionError(null);
+    const { error, data } = await supabase
+      .from('bookings')
+      .update({ status: 'confirmed', payment_status: 'deposit_paid', amount_paid_eur: 50 })
+      .eq('id', booking.id)
+      .select();
+    if (error) {
+      console.error('[handleMarkDepositPaid] failed:', error);
+      setActionError(`Грешка: ${error.message}`);
+      setActionLoading(false);
+      return;
+    }
+    if (!data || data.length === 0) {
+      setActionError('Промяната не мина — заявката не засегна нито един ред.');
+      setActionLoading(false);
+      return;
+    }
+    // Тази резервация вероятно никога не е получила потвърждаващ имейл
+    // (клиентът не е довършил онлайн плащане през Stripe) — праща го сега.
+    fetch(`${supabaseUrl}/functions/v1/send-confirmation-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}`, apikey: supabaseAnonKey },
+      body: JSON.stringify({ booking_reference: booking.reference }),
+    }).catch((e) => console.error('[send-confirmation-email] failed:', e));
     setActionLoading(false);
     setSelectedBooking(null);
     load();
@@ -298,6 +329,7 @@ export function AdminBookings() {
           booking={selectedBooking}
           onClose={() => { setSelectedBooking(null); setActionError(null); }}
           onAction={handleAction}
+          onMarkDepositPaid={handleMarkDepositPaid}
           onRefund={handleRefund}
           onDelete={handleDelete}
           onNoteSaved={load}
@@ -313,6 +345,7 @@ function BookingDetailModal({
   booking,
   onClose,
   onAction,
+  onMarkDepositPaid,
   onRefund,
   onDelete,
   onNoteSaved,
@@ -322,6 +355,7 @@ function BookingDetailModal({
   booking: Booking;
   onClose: () => void;
   onAction: (b: Booking, a: 'confirmed' | 'completed' | 'no_show' | 'cancelled') => void;
+  onMarkDepositPaid: (b: Booking) => void;
   onRefund: (b: Booking) => void;
   onDelete: (b: Booking) => void;
   onNoteSaved: () => void;
@@ -458,9 +492,14 @@ function BookingDetailModal({
               <p className="text-sm text-error-600 bg-error-50 rounded-lg px-3 py-2">{actionError}</p>
             )}
             {booking.status === 'pending' && (
-              <button onClick={() => onAction(booking, 'confirmed')} disabled={actionLoading} className="btn-primary w-full text-sm">
-                <CheckCircle className="w-4 h-4" /> Потвърди резервацията
-              </button>
+              <>
+                <button onClick={() => onMarkDepositPaid(booking)} disabled={actionLoading} className="btn-primary w-full text-sm">
+                  <CheckCircle className="w-4 h-4" /> Капаро получено (50€) — потвърди
+                </button>
+                <button onClick={() => onAction(booking, 'confirmed')} disabled={actionLoading} className="btn-secondary w-full text-sm">
+                  Потвърди без промяна на плащането
+                </button>
+              </>
             )}
             {booking.status === 'confirmed' && (
               <>
